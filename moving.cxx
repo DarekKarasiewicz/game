@@ -13,12 +13,16 @@ auto set_cursor(int x ,int y) ->void
     write(1,set.c_str(),set.size());
 }
 
-auto icon() ->void
+auto icon(char c ='@') ->void
 {
-    auto monkey="@\n";
-    write(1,&monkey,2);
+    auto monkey=c + std::string{"\n"};
+    write(1,monkey.c_str(),monkey.size());
 }
-
+auto hide_cursor() ->void
+{
+    auto set =std::string{"\e[?25l"};
+    write(1,set.c_str(),set.size());
+}
 auto main() ->int
 {
     system("stty -icanon -echo");
@@ -27,10 +31,13 @@ auto main() ->int
     clear();
     set_cursor(x,y);
     icon();
+    hide_cursor();
 
-    while(true){
-        char buff;
+    char buff;
+    do{
         read(0,&buff,1);
+        set_cursor(x,y);
+        icon(' ');
         switch(buff){
             case 'w':
                 y-- ;
@@ -54,7 +61,7 @@ auto main() ->int
         set_cursor(x,y);
         icon();
 
-    }
+    }while(buff !='q');
 
     system("stty icanon echo");
     return 0;
