@@ -32,14 +32,24 @@ auto hide_cursor() ->void
     write(1,set.c_str(),set.size());
 }
 
+struct Game_state{
+
+};
+
 struct Mob{
     std::string face;
     int x{2};
     int y{2};
 
     Mob(std::string f): face{f}
-    {
-    }
+    {}
+    Mob(std::string f,int x_p, int y_p)
+        : face{f}
+        ,x{x_p}
+        ,y{y_p}
+    {}
+    virtual ~Mob()
+    {}
 
     auto restrain(int max_x,int max_y) ->void
     {
@@ -61,6 +71,16 @@ struct Mob{
         set_cursor(x,y);
         write(1," \n");
     }
+
+    virtual auto frame_action(Game_state&) ->void
+    {}
+};
+
+struct Horizontal :Mob
+{
+    using Mob::Mob;
+    auto frame_action(Game_state&) ->void override
+    {}
 };
 auto main() ->int
 {
@@ -75,13 +95,20 @@ auto main() ->int
 
     auto mobs =std::vector<std::unique_ptr<Mob>>{};
     mobs.push_back(std::make_unique<Mob>("@"));
+    mobs.push_back(std::make_unique<Mob>("X",11,11));
+    mobs.push_back(std::make_unique<Horizontal>("H",4,4));
+    mobs.push_back(std::make_unique<Mob>("V",6,12));
     auto& monkey = *mobs.front();
     monkey.display();
 
     char buff;
     do{
         read(0,&buff,1);
-        monkey.erase();
+
+        for(auto& mob :mobs){
+            mob->erase();
+        }
+
         switch(buff){
             case 'w':
                 monkey.y-- ;
@@ -102,7 +129,15 @@ auto main() ->int
             default:
                 break;
         }
-        monkey.restrain(MAP_WIDTH,MAP_HEIGHT);
+
+        for(auto& mob :mobs){
+            mob->frame_action();
+        }
+
+        for(auto& mob :mobs){
+            mob->restrain(MAP_WIDTH,MAP_HEIGHT);
+            mob->display();
+        }
         monkey.display();
 
         set_cursor(MAP_WIDTH+2,1);
