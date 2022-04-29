@@ -37,6 +37,10 @@ struct Mob{
     int x{2};
     int y{2};
 
+    Mob(std::string f): face{f}
+    {
+    }
+
     auto restrain(int max_x,int max_y) ->void
     {
         x = std::max(1+1,x);
@@ -69,7 +73,9 @@ auto main() ->int
     set_cursor(1,1);
     create_map(MAP_WIDTH,MAP_HEIGHT);
 
-    auto monkey=Mob{"@"};
+    auto mobs =std::vector<std::unique_ptr<Mob>>{};
+    mobs.push_back(std::make_unique<Mob>("@"));
+    auto& monkey = *mobs.front();
     monkey.display();
 
     char buff;
