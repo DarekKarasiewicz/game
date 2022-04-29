@@ -16,3 +16,5 @@ watch:
 
 %.o: %.cxx
 	$(CXX) $(CXXFLAGS) -c -o $@ $^
+
+game.elf: map.o
