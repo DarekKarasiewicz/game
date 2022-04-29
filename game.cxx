@@ -3,6 +3,8 @@
 #include <string>
 #include <string.h>
 #include <sys/select.h>
+#include <vector>
+#include <memory>
 
 #include "map.h"
 
@@ -24,68 +26,81 @@ auto set_cursor(int x ,int y) ->void
     write(1,set.c_str(),set.size());
 }
 
-auto icon(char c ='@') ->void
-{
-    auto monkey=c + std::string{"\n"};
-    write(1,monkey.c_str(),monkey.size());
-}
 auto hide_cursor() ->void
 {
     auto set =std::string{"\e[?25l"};
     write(1,set.c_str(),set.size());
 }
 
+struct Mob{
+    std::string face;
+    int x{2};
+    int y{2};
+
+    auto restrain(int max_x,int max_y) ->void
+    {
+        x = std::max(1+1,x);
+        x = std::min(max_x-1,x);
+
+        y = std::max(1+1,y);
+        y = std::min(max_y-1,y);
+    }
+
+    auto display() const ->void
+    {
+        set_cursor(x,y);
+        write(1,face+'\n');
+    }
+
+    auto erase() const ->void
+    {
+        set_cursor(x,y);
+        write(1," \n");
+    }
+};
 auto main() ->int
 {
+    system("stty -icanon -echo");
+    clear();
+    hide_cursor();
+
     auto const MAP_WIDTH=25;
     auto const MAP_HEIGHT=15;
-    system("stty -icanon -echo");
-
-    int x=2 ,y =2;
-    clear();
     set_cursor(1,1);
     create_map(MAP_WIDTH,MAP_HEIGHT);
-    set_cursor(x,y);
-    icon();
-    hide_cursor();
+
+    auto monkey=Mob{"@"};
+    monkey.display();
 
     char buff;
     do{
         read(0,&buff,1);
-        set_cursor(x,y);
-        icon(' ');
+        monkey.erase();
         switch(buff){
             case 'w':
-                y-- ;
+                monkey.y-- ;
                 break;
             case 's':
-                y++;
+                monkey.y++;
                 break;
             case 'd':
-                x++;
+                monkey.x++;
                 break;
             case 'a':
-                x--;
+                monkey.x--;
                 break;
             case 'm':
-                x=2;
-                y=2;
+                monkey.x=2;
+                monkey.y=2;
                 break;
             default:
                 break;
         }
-
-        x = std::max(1+1,x);
-        x = std::min(MAP_WIDTH-1,x);
-
-        y = std::max(1+1,y);
-        y = std::min(MAP_HEIGHT-1,y);
-
-        set_cursor(x,y);
-        icon();
+        monkey.restrain(MAP_WIDTH,MAP_HEIGHT);
+        monkey.display();
 
         set_cursor(MAP_WIDTH+2,1);
-        write(1,std::to_string(x)+":"+std::to_string(y)+"  ");
+        write(1,std::to_string(monkey.x)+":"+std::to_string(monkey.y)+"  ");
     }while(buff !='q');
 
     system("stty icanon echo");
