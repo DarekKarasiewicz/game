@@ -35,11 +35,28 @@ auto hide_cursor() ->void
 
 struct Mob;
 
+struct Terrain
+{
+    int x;
+    int y;
+    size_t height;
+    size_t width;
+
+    Terrain(int x_p, int y_p,size_t h, size_t w)
+        : x{x_p}
+        , y{y_p}
+        , height{h}
+        , width{w}
+        {}
+};
+
 struct Game_state{
     struct {
         int x;
         int y;
     } map_size;
+
+    std::vector<Terrain> terrain;
 
     std::vector<std::unique_ptr<Mob>> mobs;
 };
@@ -66,6 +83,10 @@ struct Mob{
 
         y = std::max(1+1,y);
         y = std::min(max_y-1,y);
+    }
+
+    auto detect_collision() ->void
+    {
     }
 
     auto display() const ->void
@@ -195,9 +216,17 @@ auto main() ->int
     auto const MAP_HEIGHT=15;
     set_cursor(1,1);
     create_map(MAP_WIDTH,MAP_HEIGHT);
+    /* create_map(8,8,4,6); */
+
     Game_state game_state{};
     game_state.map_size.x=MAP_WIDTH;
     game_state.map_size.y=MAP_HEIGHT;
+    game_state.terrain.emplace_back(8,8,4,6);
+    game_state.terrain.emplace_back(20,10,2,2);
+
+    for (auto& terrain : game_state.terrain){
+        create_map(terrain.x,terrain.y,terrain.width,terrain.height);
+    }
 
     auto& mobs =game_state.mobs;
     mobs.push_back(std::make_unique<Mob>("@"));
