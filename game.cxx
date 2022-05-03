@@ -32,14 +32,15 @@ auto hide_cursor() ->void
     write(1,set.c_str(),set.size());
 }
 
-struct Game_state{
-    /* using Mob::Mob; */
-    int map_size_x;
-    int map_size_y;
+struct Mob;
 
-    int current_p_x;
-    int current_p_y;
-    /* std::vector<std::unique_ptr<Mob>> mobs; */
+struct Game_state{
+    struct {
+        int x;
+        int y;
+    } map_size;
+
+    std::vector<std::unique_ptr<Mob>> mobs;
 };
 
 struct Mob{
@@ -92,7 +93,7 @@ struct Horizontal :Mob
     bool left=false;
     auto frame_action(Game_state &game) ->void override
     {
-        if(x==game.map_size_x-1 ){
+        if(x==game.map_size.x-1 ){
             left =true;
             right=false;
         }
@@ -116,7 +117,7 @@ struct Vertical :Mob
     bool left=false;
     auto frame_action(Game_state &game) ->void override
     {
-        if(y==game.map_size_y-1 ){
+        if(y==game.map_size.y-1 ){
             left =true;
             up=false;
         }
@@ -140,14 +141,19 @@ struct Snake :Mob
     bool down=true;
     bool right=true;
     bool left=false;
-
+    int last_direction=-1;
     int i=5;
     auto frame_action(Game_state &game) ->void override
     {
         int random_direction= rand() % 4;
+        if(random_direction ==last_direction){
+            frame_action(game);
+            return;
+        }
         if(i==5){
         switch(random_direction){
             case 0:
+                last_direction=0;
                 i=0;
                 left=true;
                 up=false;
@@ -155,6 +161,7 @@ struct Snake :Mob
                 right=false;
                 break;
             case 1:
+                last_direction=1;
                 i=0;
                 left=false;
                 up=true;
@@ -162,6 +169,7 @@ struct Snake :Mob
                 right=false;
                 break;
             case 2:
+                last_direction=2;
                 i=0;
                 left=false;
                 up=false;
@@ -169,6 +177,7 @@ struct Snake :Mob
                 right=false;
                 break;
             case 3:
+                last_direction=3;
                 i=0;
                 left=false;
                 up=false;
@@ -193,9 +202,10 @@ struct Snake :Mob
             y++;
             i++;
         }
-        if(y==game.map_size_y-1 or y==2 or x==2 or x==game.map_size_x-1){
+        if(y==game.map_size.y-1 or y==2 or x==2 or x==game.map_size.x-1){
             i=5;
             frame_action(game);
+            return;
         }
     }
 };
@@ -211,15 +221,13 @@ auto main() ->int
     set_cursor(1,1);
     create_map(MAP_WIDTH,MAP_HEIGHT);
     Game_state game_state{};
-    game_state.map_size_x=MAP_WIDTH;
-    game_state.map_size_y=MAP_HEIGHT;
+    game_state.map_size.x=MAP_WIDTH;
+    game_state.map_size.y=MAP_HEIGHT;
 
     auto mobs =std::vector<std::unique_ptr<Mob>>{};
     mobs.push_back(std::make_unique<Mob>("@"));
     mobs.push_back(std::make_unique<Horizontal>("H",4,4));
     mobs.push_back(std::make_unique<Snake>("X",11,11));
-    game_state.current_p_x=4;
-    game_state.current_p_y=4;
     mobs.push_back(std::make_unique<Vertical>("V",6,12));
     auto& monkey = *mobs.front();
     monkey.display();
