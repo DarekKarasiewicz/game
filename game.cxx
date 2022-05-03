@@ -33,7 +33,13 @@ auto hide_cursor() ->void
 }
 
 struct Game_state{
+    /* using Mob::Mob; */
+    int map_size_x;
+    int map_size_y;
 
+    int current_p_x;
+    int current_p_y;
+    /* std::vector<std::unique_ptr<Mob>> mobs; */
 };
 
 struct Mob{
@@ -72,6 +78,9 @@ struct Mob{
         write(1," \n");
     }
 
+    virtual auto frame_action(int a) ->void
+    {}
+
     virtual auto frame_action(Game_state&) ->void
     {}
 };
@@ -79,9 +88,51 @@ struct Mob{
 struct Horizontal :Mob
 {
     using Mob::Mob;
-    auto frame_action(Game_state&) ->void override
-    {}
+    bool right=true;
+    bool left=false;
+    auto frame_action(Game_state &game) ->void override
+    {
+        if(x==game.map_size_x-1 ){
+            left =true;
+            right=false;
+        }
+        else if( x==2){
+            right =true;
+            left=false;
+        }
+        if(right){
+            x++;
+        }
+        if(left){
+            x--;
+        }
+    }
 };
+
+struct Vertical :Mob
+{
+    using Mob::Mob;
+    bool up=true;
+    bool left=false;
+    auto frame_action(Game_state &game) ->void override
+    {
+        if(y==game.map_size_y-1 ){
+            left =true;
+            up=false;
+        }
+        else if( y==2){
+            up =true;
+            left=false;
+        }
+        if(up){
+            y++;
+        }
+        if(left){
+            y--;
+        }
+    }
+};
+
 auto main() ->int
 {
     system("stty -icanon -echo");
@@ -92,12 +143,17 @@ auto main() ->int
     auto const MAP_HEIGHT=15;
     set_cursor(1,1);
     create_map(MAP_WIDTH,MAP_HEIGHT);
+    Game_state game_state{};
+    game_state.map_size_x=MAP_WIDTH;
+    game_state.map_size_y=MAP_HEIGHT;
 
     auto mobs =std::vector<std::unique_ptr<Mob>>{};
     mobs.push_back(std::make_unique<Mob>("@"));
-    mobs.push_back(std::make_unique<Mob>("X",11,11));
     mobs.push_back(std::make_unique<Horizontal>("H",4,4));
-    mobs.push_back(std::make_unique<Mob>("V",6,12));
+    mobs.push_back(std::make_unique<Mob>("X",11,11));
+    game_state.current_p_x=4;
+    game_state.current_p_y=4;
+    mobs.push_back(std::make_unique<Vertical>("V",6,12));
     auto& monkey = *mobs.front();
     monkey.display();
 
@@ -131,14 +187,14 @@ auto main() ->int
         }
 
         for(auto& mob :mobs){
-            mob->frame_action();
+            mob->frame_action(game_state);
         }
 
         for(auto& mob :mobs){
             mob->restrain(MAP_WIDTH,MAP_HEIGHT);
             mob->display();
         }
-        monkey.display();
+        monkey.display();  //Monkey always on top
 
         set_cursor(MAP_WIDTH+2,1);
         write(1,std::to_string(monkey.x)+":"+std::to_string(monkey.y)+"  ");
