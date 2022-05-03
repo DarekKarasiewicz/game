@@ -80,9 +80,6 @@ struct Mob{
         write(1," \n");
     }
 
-    virtual auto frame_action(int a) ->void
-    {}
-
     virtual auto frame_action(Game_state&) ->void
     {}
 };
