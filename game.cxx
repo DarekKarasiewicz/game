@@ -150,6 +150,7 @@ struct Snake :Mob
     size_t steps=5;
     auto frame_action(Game_state &game) ->void override
     {
+        //FIXME rand(3) -> std::random
         auto d=direction.value_or(static_cast<Direction>(rand() % 4));
 
         switch (d){
