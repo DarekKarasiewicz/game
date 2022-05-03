@@ -85,8 +85,24 @@ struct Mob{
         y = std::min(max_y-1,y);
     }
 
-    auto detect_collision() ->void
+    auto detect_collision(Game_state const& game_state) ->bool
     {
+        for (auto const& terrain : game_state.terrain){
+            if(x<terrain.x){
+                continue;
+            }
+            if(x>terrain.x + static_cast<int>(terrain.height)){
+                continue;
+            }
+            if(y<terrain.y){
+                continue;
+            }
+            if(y>terrain.y + static_cast<int>(terrain.width)){
+                continue;
+            }
+            return true;
+        }
+        return false;
     }
 
     auto display() const ->void
@@ -109,22 +125,28 @@ struct Horizontal :Mob
 {
     using Mob::Mob;
     bool right=true;
-    bool left=false;
     auto frame_action(Game_state &game) ->void override
     {
         if(x==game.map_size.x-1 ){
-            left =true;
             right=false;
         }
         else if( x==2){
             right =true;
-            left=false;
         }
         if(right){
-            x++;
+            ++x;
         }
-        if(left){
-            x--;
+        else{
+            --x;
+        }
+        if(detect_collision(game)){
+            if(right){
+                --x;
+            }
+            else{
+                ++x;
+            }
+            right=not right;
         }
     }
 };
@@ -221,7 +243,7 @@ auto main() ->int
     Game_state game_state{};
     game_state.map_size.x=MAP_WIDTH;
     game_state.map_size.y=MAP_HEIGHT;
-    game_state.terrain.emplace_back(8,8,4,6);
+    game_state.terrain.emplace_back(8,3,4,6);
     game_state.terrain.emplace_back(20,10,2,2);
 
     for (auto& terrain : game_state.terrain){
