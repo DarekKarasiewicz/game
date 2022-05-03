@@ -224,7 +224,7 @@ auto main() ->int
     game_state.map_size.x=MAP_WIDTH;
     game_state.map_size.y=MAP_HEIGHT;
 
-    auto mobs =std::vector<std::unique_ptr<Mob>>{};
+    auto& mobs =game_state.mobs;
     mobs.push_back(std::make_unique<Mob>("@"));
     mobs.push_back(std::make_unique<Horizontal>("H",4,4));
     mobs.push_back(std::make_unique<Snake>("X",11,11));
