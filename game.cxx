@@ -133,6 +133,73 @@ struct Vertical :Mob
     }
 };
 
+struct Snake :Mob
+{
+    using Mob::Mob;
+    bool up=true;
+    bool down=true;
+    bool right=true;
+    bool left=false;
+
+    int i=5;
+    auto frame_action(Game_state &game) ->void override
+    {
+        int random_direction= rand() % 4;
+        if(i==5){
+        switch(random_direction){
+            case 0:
+                i=0;
+                left=true;
+                up=false;
+                down=false;
+                right=false;
+                break;
+            case 1:
+                i=0;
+                left=false;
+                up=true;
+                down=false;
+                right=false;
+                break;
+            case 2:
+                i=0;
+                left=false;
+                up=false;
+                down=true;
+                right=false;
+                break;
+            case 3:
+                i=0;
+                left=false;
+                up=false;
+                down=false;
+                right=true;
+                break;
+            }
+        }
+        if(left){
+            x--;
+            i++;
+        }
+        if(right){
+            x++;
+            i++;
+        }
+        if(up){
+            y--;
+            i++;
+        }
+        if(down){
+            y++;
+            i++;
+        }
+        if(y==game.map_size_y-1 or y==2 or x==2 or x==game.map_size_x-1){
+            i=5;
+            frame_action(game);
+        }
+    }
+};
+
 auto main() ->int
 {
     system("stty -icanon -echo");
@@ -150,7 +217,7 @@ auto main() ->int
     auto mobs =std::vector<std::unique_ptr<Mob>>{};
     mobs.push_back(std::make_unique<Mob>("@"));
     mobs.push_back(std::make_unique<Horizontal>("H",4,4));
-    mobs.push_back(std::make_unique<Mob>("X",11,11));
+    mobs.push_back(std::make_unique<Snake>("X",11,11));
     game_state.current_p_x=4;
     game_state.current_p_y=4;
     mobs.push_back(std::make_unique<Vertical>("V",6,12));
