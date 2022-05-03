@@ -1,3 +1,4 @@
+#include <optional>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string>
@@ -134,80 +135,56 @@ struct Vertical :Mob
     }
 };
 
+enum class Direction
+{
+    North,
+    South,
+    East,
+    West,
+};
+
 struct Snake :Mob
 {
     using Mob::Mob;
-    bool up=true;
-    bool down=true;
-    bool right=true;
-    bool left=false;
-    int last_direction=-1;
-    int i=5;
+    std::optional<Direction> direction;
+    size_t steps=5;
     auto frame_action(Game_state &game) ->void override
     {
-        int random_direction= rand() % 4;
-        if(random_direction ==last_direction){
-            frame_action(game);
-            return;
+        auto d=direction.value_or(static_cast<Direction>(rand() % 4));
+
+        switch (d){
+            case Direction::North:
+                face="\e[35mX\e[0m";
+                y--;
+                break;
+            case Direction::South:
+                face="\e[32mX\e[0m";
+                y++;
+                break;
+            case Direction::East:
+                face="\e[33mX\e[0m";
+                x++;
+                break;
+            case Direction::West:
+                face="\e[36mX\e[0m";
+                x--;
+                break;
         }
-        if(i==5){
-        switch(random_direction){
-            case 0:
-                last_direction=0;
-                i=0;
-                left=true;
-                up=false;
-                down=false;
-                right=false;
-                break;
-            case 1:
-                last_direction=1;
-                i=0;
-                left=false;
-                up=true;
-                down=false;
-                right=false;
-                break;
-            case 2:
-                last_direction=2;
-                i=0;
-                left=false;
-                up=false;
-                down=true;
-                right=false;
-                break;
-            case 3:
-                last_direction=3;
-                i=0;
-                left=false;
-                up=false;
-                down=false;
-                right=true;
-                break;
+
+        direction=direction.value_or(d);
+
+        if (--steps == 0){
+            steps=5;
+            while (true){
+                auto next =static_cast<Direction>(rand() % 4);
+                if (next != direction){
+                    direction=next;
+                    break;
+                }
             }
         }
-        if(left){
-            x--;
-            i++;
-        }
-        if(right){
-            x++;
-            i++;
-        }
-        if(up){
-            y--;
-            i++;
-        }
-        if(down){
-            y++;
-            i++;
-        }
-        if(y==game.map_size.y-1 or y==2 or x==2 or x==game.map_size.x-1){
-            i=5;
-            frame_action(game);
-            return;
-        }
     }
+
 };
 
 auto main() ->int
