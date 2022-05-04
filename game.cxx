@@ -91,13 +91,13 @@ struct Mob{
             if(x<terrain.x){
                 continue;
             }
-            if(x>terrain.x + static_cast<int>(terrain.height)){
+            if(x>terrain.x + static_cast<int>(terrain.width)){
                 continue;
             }
             if(y<terrain.y){
                 continue;
             }
-            if(y>terrain.y + static_cast<int>(terrain.width)){
+            if(y>=terrain.y + static_cast<int>(terrain.height)){
                 continue;
             }
             return true;
@@ -155,22 +155,29 @@ struct Vertical :Mob
 {
     using Mob::Mob;
     bool up=true;
-    bool left=false;
     auto frame_action(Game_state &game) ->void override
     {
         if(y==game.map_size.y-1 ){
-            left =true;
             up=false;
         }
         else if( y==2){
             up =true;
-            left=false;
         }
         if(up){
-            y++;
+            ++y;
         }
-        if(left){
-            y--;
+        else{
+            --y;
+        }
+
+        if(detect_collision(game)){
+            if(up){
+                --y;
+            }
+            else{
+                ++y;
+            }
+            up=not up;
         }
     }
 };
@@ -245,6 +252,7 @@ auto main() ->int
     game_state.map_size.y=MAP_HEIGHT;
     game_state.terrain.emplace_back(8,3,4,6);
     game_state.terrain.emplace_back(20,10,2,2);
+    game_state.terrain.emplace_back(5,7,4,4);
 
     for (auto& terrain : game_state.terrain){
         create_map(terrain.x,terrain.y,terrain.width,terrain.height);
