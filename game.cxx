@@ -199,7 +199,8 @@ struct Snake :Mob
     {
         //FIXME rand(3) -> std::random
         auto d=direction.value_or(static_cast<Direction>(rand() % 4));
-
+        auto const pr_x = x;
+        auto const pr_y = y;
         switch (d){
             case Direction::North:
                 face="\e[35mX\e[0m";
@@ -217,6 +218,11 @@ struct Snake :Mob
                 face="\e[36mX\e[0m";
                 x--;
                 break;
+        }
+        if(detect_collision(game)){
+            x = pr_x;
+            y = pr_y;
+            steps = 1;
         }
 
         direction=direction.value_or(d);
