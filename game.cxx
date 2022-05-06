@@ -322,6 +322,6 @@ auto main() ->int
         write(1,std::to_string(monkey.x)+":"+std::to_string(monkey.y)+"  ");
     }while(buff !='q');
 
-    system("stty icanon echo");
+    system("reset");
     return 0;
 }
