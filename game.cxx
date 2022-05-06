@@ -59,6 +59,38 @@ struct Game_state{
     std::vector<Terrain> terrain;
 
     std::vector<std::unique_ptr<Mob>> mobs;
+
+    auto detect_collision(int const x,int const y) ->bool
+    {
+        for (auto const& terrain : terrain){
+            if(x<terrain.x){
+                continue;
+            }
+            if(x>terrain.x + static_cast<int>(terrain.width)){
+                continue;
+            }
+            if(y<terrain.y){
+                continue;
+            }
+            if(y>=terrain.y + static_cast<int>(terrain.height)){
+                continue;
+            }
+            if (x <= 1){
+                return true;
+            }
+            if (x >= map_size.x){
+                return true;
+            }
+            if (y <= 1){
+                return true;
+            }
+            if (y >= map_size.y){
+                return true;
+            }
+            return true;
+        }
+        return false;
+    }
 };
 
 struct Mob{
@@ -155,8 +187,19 @@ struct Vertical :Mob
 {
     using Mob::Mob;
     bool up=true;
+    int back_to_position = 0;
+    bool i_want_to_go_back =false;
     auto frame_action(Game_state &game) ->void override
     {
+        if (back_to_position !=0 and i_want_to_go_back){
+            auto const a = -(std::abs(back_to_position)/back_to_position);
+            if (!game.detect_collision(x+a,y)){
+               x+=a;
+               back_to_position+=a;
+               return;
+            }
+        }
+
         if(y==game.map_size.y-1 ){
             up=false;
         }
@@ -170,6 +213,8 @@ struct Vertical :Mob
             --y;
         }
 
+        i_want_to_go_back =(back_to_position !=0) and (!detect_collision(game));
+
         if(detect_collision(game)){
             if(up){
                 --y;
@@ -177,6 +222,13 @@ struct Vertical :Mob
             else{
                 ++y;
             }
+
+            if (!game.detect_collision(x-1,y)){
+                --x;
+                --back_to_position;
+                return;
+            }
+
             up=not up;
         }
     }
@@ -268,7 +320,7 @@ auto main() ->int
     mobs.push_back(std::make_unique<Mob>("@"));
     mobs.push_back(std::make_unique<Horizontal>("H",4,4));
     mobs.push_back(std::make_unique<Snake>("X",11,11));
-    mobs.push_back(std::make_unique<Vertical>("V",6,12));
+    mobs.push_back(std::make_unique<Vertical>("V",7,12));
     auto& monkey = *mobs.front();
     monkey.display();
 
