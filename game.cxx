@@ -280,6 +280,8 @@ auto main() ->int
             mob->erase();
         }
 
+        auto const pr_x = monkey.x;
+        auto const pr_y = monkey.y;
         switch(buff){
             case 'w':
                 monkey.y-- ;
@@ -299,6 +301,11 @@ auto main() ->int
                 break;
             default:
                 break;
+        }
+
+        if(monkey.detect_collision(game_state)){
+            monkey.x = pr_x;
+            monkey.y = pr_y;
         }
 
         for(auto& mob :mobs){
