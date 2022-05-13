@@ -230,7 +230,7 @@ struct Vertical :Mob
     int back_to_position = 0;
     bool i_want_to_go_back =false;
     bool left_check=false;
-    auto frame_action(Game_state &game) ->void override
+    auto true_frame_action(Game_state &game) ->void
     {
         if (back_to_position !=0 and i_want_to_go_back){
             auto const a = -(std::abs(back_to_position)/back_to_position);
@@ -272,7 +272,6 @@ struct Vertical :Mob
                 if(game.detect_collision(x-1,y)){
                     face="\e[32mV\e[0m";
                     left_check=true;
-                    return;
                 }
             }
             if(!game.detect_collision(x+1,y) and left_check){
@@ -282,8 +281,16 @@ struct Vertical :Mob
             }
             up=not up;
         }
+    }
+    auto frame_action(Game_state& game) ->void override
+    {
+        true_frame_action(game);
         set_cursor(game.map_size.x+2,2);
-        write(1,"Vertical");
+        write(1,std::string{"Vertical"}
+                + " i_want_to_go_back=" + std::to_string(i_want_to_go_back)
+                + " back_to_position=" + std::to_string(back_to_position)
+                + " left_check=" + std::to_string(left_check)
+                );
         set_cursor(game.map_size.x+2,3);
         write(1,std::to_string(x)+":"+std::to_string(y)+"  ");
     }
