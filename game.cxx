@@ -157,8 +157,20 @@ struct Horizontal :Mob
 {
     using Mob::Mob;
     bool right=true;
-    auto frame_action(Game_state &game) ->void override
+    int back_to_position = 0;
+    bool i_want_to_go_back =false;
+    bool up_check=false;
+    auto true_frame_action(Game_state& game) ->void
     {
+        if (back_to_position !=0 and i_want_to_go_back){
+            auto const a = -(std::abs(back_to_position)/back_to_position);
+            if (!game.detect_collision(x,y+a)){
+               y+=a;
+               back_to_position+=a;
+               return;
+            }
+        }
+
         if(x==game.map_size.x-1 ){
             right=false;
         }
@@ -171,6 +183,7 @@ struct Horizontal :Mob
         else{
             --x;
         }
+        i_want_to_go_back =(back_to_position !=0) and (!detect_collision(game));
         if(detect_collision(game)){
             if(right){
                 --x;
@@ -178,8 +191,35 @@ struct Horizontal :Mob
             else{
                 ++x;
             }
+
+            if(up_check == false){
+                    if (!game.detect_collision(x,y-1)){
+                        --y;
+                        --back_to_position;
+                        return;
+                        }
+                    if(game.detect_collision(x,y-1)){
+                        face="\e[32mX\e[0m";
+                        up_check=true;
+                        return;
+                    }
+                }
+                if(!game.detect_collision(x,y+1) and up_check){
+                    ++y;
+                    ++back_to_position;
+                    return;
+                }
+
             right=not right;
         }
+    }
+    auto frame_action(Game_state& game) ->void override
+    {
+        true_frame_action(game);
+        set_cursor(game.map_size.x+2,4);
+        write(1,"Horizontal");
+        set_cursor(game.map_size.x+2,5);
+        write(1,std::to_string(x)+":"+std::to_string(y)+"  ");
     }
 };
 
@@ -189,6 +229,7 @@ struct Vertical :Mob
     bool up=true;
     int back_to_position = 0;
     bool i_want_to_go_back =false;
+    bool left_check=false;
     auto frame_action(Game_state &game) ->void override
     {
         if (back_to_position !=0 and i_want_to_go_back){
@@ -222,15 +263,29 @@ struct Vertical :Mob
             else{
                 ++y;
             }
-
-            if (!game.detect_collision(x-1,y)){
-                --x;
-                --back_to_position;
+            if(left_check == false){
+                if (!game.detect_collision(x-1,y)){
+                    --x;
+                    --back_to_position;
+                    return ;
+                    }
+                if(game.detect_collision(x-1,y)){
+                    face="\e[32mX\e[0m";
+                    left_check=true;
+                    return;
+                }
+            }
+            if(!game.detect_collision(x+1,y) and left_check){
+                ++x;
+                ++back_to_position;
                 return;
             }
-
             up=not up;
         }
+        set_cursor(game.map_size.x+2,2);
+        write(1,"Vertical");
+        set_cursor(game.map_size.x+2,3);
+        write(1,std::to_string(x)+":"+std::to_string(y)+"  ");
     }
 };
 
@@ -309,8 +364,8 @@ auto main() ->int
     game_state.map_size.x=MAP_WIDTH;
     game_state.map_size.y=MAP_HEIGHT;
     game_state.terrain.emplace_back(8,3,4,6);
-    game_state.terrain.emplace_back(20,10,2,2);
-    game_state.terrain.emplace_back(5,7,4,4);
+    //game_state.terrain.emplace_back(20,10,2,2);
+    game_state.terrain.emplace_back(2,7,4,7);
 
     for (auto& terrain : game_state.terrain){
         create_map(terrain.x,terrain.y,terrain.width,terrain.height);
