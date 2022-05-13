@@ -270,7 +270,7 @@ struct Vertical :Mob
                     return ;
                     }
                 if(game.detect_collision(x-1,y)){
-                    face="\e[32mX\e[0m";
+                    face="\e[32mV\e[0m";
                     left_check=true;
                     return;
                 }
