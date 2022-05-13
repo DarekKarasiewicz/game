@@ -2,6 +2,7 @@ CXX=g++
 CXXSTD=c++2a
 CXXFLAGS=\
 		 -std=$(CXXSTD) \
+		 -g \
 		 -Wall \
 		 -Werror \
 		 -Wfatal-errors
@@ -18,3 +19,7 @@ watch:
 	$(CXX) $(CXXFLAGS) -c -o $@ $^
 
 game.elf: map.o
+
+clean:
+	rm *.o 
+	rm *.elf
