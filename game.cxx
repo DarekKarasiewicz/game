@@ -62,6 +62,18 @@ struct Game_state{
 
     auto detect_collision(int const x,int const y) ->bool
     {
+        if (x <= 1){
+            return true;
+        }
+        if (x >= map_size.x){
+            return true;
+        }
+        if (y <= 1){
+            return true;
+        }
+        if (y >= map_size.y){
+            return true;
+        }
         for (auto const& terrain : terrain){
             if(x<terrain.x){
                 continue;
@@ -74,18 +86,6 @@ struct Game_state{
             }
             if(y>=terrain.y + static_cast<int>(terrain.height)){
                 continue;
-            }
-            if (x <= 1){
-                return true;
-            }
-            if (x >= map_size.x){
-                return true;
-            }
-            if (y <= 1){
-                return true;
-            }
-            if (y >= map_size.y){
-                return true;
             }
             return true;
         }
