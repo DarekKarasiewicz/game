@@ -157,6 +157,45 @@ struct Horizontal :Mob
 {
     using Mob::Mob;
     bool right=true;
+
+    auto true_frame_action(Game_state& game) ->void
+    {
+        if(x==game.map_size.x-1 ){
+            right=false;
+        }
+        else if( x==2){
+            right =true;
+        }
+        if(right){
+            ++x;
+        }
+        else{
+            --x;
+        }
+        if(detect_collision(game)){
+            if(right){
+                --x;
+            }
+            else{
+                ++x;
+            }
+            right=not right;
+        }
+    }
+    auto frame_action(Game_state& game) ->void override
+    {
+        true_frame_action(game);
+        set_cursor(game.map_size.x+2,8);
+        write(1,"Hertical");
+        set_cursor(game.map_size.x+2,9);
+        write(1,std::to_string(x)+":"+std::to_string(y)+"  ");
+    }
+};
+
+struct Smart_Horizontal :Mob
+{
+    using Mob::Mob;
+    bool right=true;
     int back_to_position = 0;
     bool i_want_to_go_back =false;
     bool up_check=false;
@@ -217,13 +256,51 @@ struct Horizontal :Mob
     {
         true_frame_action(game);
         set_cursor(game.map_size.x+2,4);
-        write(1,"Horizontal");
+        write(1,"Smart_Horizontal");
         set_cursor(game.map_size.x+2,5);
         write(1,std::to_string(x)+":"+std::to_string(y)+"  ");
     }
 };
 
 struct Vertical :Mob
+{
+    using Mob::Mob;
+    bool up=true;
+    auto true_frame_action(Game_state &game) ->void
+    {
+        if(y==game.map_size.y-1 ){
+            up=false;
+        }
+        else if( y==2){
+            up =true;
+        }
+        if(up){
+            ++y;
+        }
+        else{
+            --y;
+        }
+        if(detect_collision(game)){
+            if(up){
+                --y;
+            }
+            else{
+                ++y;
+            }
+            up=not up;
+        }
+    }
+    auto frame_action(Game_state& game) ->void override
+    {
+        true_frame_action(game);
+        set_cursor(game.map_size.x+2,6);
+        write(1,"Vertical");
+        set_cursor(game.map_size.x+2,7);
+        write(1,std::to_string(x)+":"+std::to_string(y)+"  ");
+    }
+};
+
+struct Smart_Vertical :Mob
 {
     using Mob::Mob;
     bool up=true;
@@ -286,7 +363,7 @@ struct Vertical :Mob
     {
         true_frame_action(game);
         set_cursor(game.map_size.x+2,2);
-        write(1,std::string{"Vertical"}
+        write(1,std::string{"Smart_Vertical"}
                 + " i_want_to_go_back=" + std::to_string(i_want_to_go_back)
                 + " back_to_position=" + std::to_string(back_to_position)
                 + " left_check=" + std::to_string(left_check)
