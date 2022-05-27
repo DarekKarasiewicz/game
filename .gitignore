@@ -1,6 +1,7 @@
 .*
 !.gitignore
 !.gitkeep
+!.clang-format
 
 *.elf
 *.o

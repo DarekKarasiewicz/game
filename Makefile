@@ -5,21 +5,25 @@ CXXFLAGS=\
 		 -g \
 		 -Wall \
 		 -Werror \
-		 -Wfatal-errors
+		 -Wfatal-errors \
+		 -Iinclude
 
 all: game.elf
 
 watch:
 	find . -name '*.cxx' | entr -c make -j
 
-%.elf: %.o
+%.elf: build/%.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-%.o: %.cxx
+build/%.o: src/%.cxx
 	$(CXX) $(CXXFLAGS) -c -o $@ $^
 
-game.elf: map.o
+game.elf: build/map.o
+
+format:
+	find . -name "*.cxx" -or -name "*.h" | xargs --verbose -n 1 clang-format -i
 
 clean:
-	rm *.o 
+	rm build/*.o 
 	rm *.elf
