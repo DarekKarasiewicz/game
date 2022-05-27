@@ -453,9 +453,24 @@ auto main() -> int
     auto& monkey = *mobs.front();
     monkey.display();
 
-    char buff;
+    constexpr auto EMPTY_INPUT = char{'\0'};
+    auto buff                  = EMPTY_INPUT;
     do {
-        read(0, &buff, 1);
+        fd_set readfds;
+        FD_ZERO(&readfds);
+        FD_SET(0, &readfds);
+        auto const nfds = 0 + 1;
+
+        timeval timeout{0,500000};
+
+        if (select(nfds, &readfds, nullptr, nullptr, &timeout) == -1) {
+            break;
+        }
+
+        buff = EMPTY_INPUT;
+        if (FD_ISSET(0, &readfds)) {
+            read(0, &buff, 1);
+        }
 
         for (auto& mob : mobs) {
             mob->erase();
