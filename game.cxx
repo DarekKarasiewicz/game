@@ -372,6 +372,21 @@ struct Smart_Vertical :Mob
         write(1,std::to_string(x)+":"+std::to_string(y)+"  ");
     }
 };
+struct God_Mob :Mob
+{
+    using Mob::Mob;
+    auto true_frame_action(Game_state &game) ->void
+    {
+    }
+    auto frame_action(Game_state& game) ->void override
+    {
+        true_frame_action(game);
+        set_cursor(game.map_size.x+2,10);
+        write(1,std::string{"God_mob"});
+        set_cursor(game.map_size.x+2,11);
+        write(1,std::to_string(x)+":"+std::to_string(y)+"  ");
+    }
+};
 
 enum class Direction
 {
