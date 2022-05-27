@@ -3,5 +3,11 @@
 !.gitkeep
 !.clang-format
 
+!.issue
+.issue/*
+!.issue/objects
+!.issue/status
+.issue/objects/issues/*/*.json
+
 *.elf
 *.o
