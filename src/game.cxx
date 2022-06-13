@@ -53,6 +53,11 @@ struct Game_state {
         int y;
     } map_size;
 
+    struct {
+        int x;
+        int y;
+    } monkey_pr;
+
     std::vector<Terrain> terrain;
 
     std::vector<std::unique_ptr<Mob>> mobs;
@@ -354,8 +359,71 @@ struct Smart_Vertical : Mob {
 };
 struct God_Mob : Mob {
     using Mob::Mob;
+    bool right             = true;
+    int back_to_position   = 0;
+    bool i_want_to_go_back = false;
+    bool up_check          = false;
     auto true_frame_action(Game_state& game) -> void
-    {}
+    {
+        if (back_to_position != 0 and i_want_to_go_back) {
+            auto const a = -(std::abs(back_to_position) / back_to_position);
+            if (!game.detect_collision(x, y + a)) {
+                y += a;
+                back_to_position += a;
+                return;
+            }
+        }
+
+        if (x == game.map_size.x - 1) {
+            right = false;
+        } else if (x == 2) {
+            right = true;
+        }
+        if (right) {
+            ++x;
+        } else {
+            --x;
+        }
+
+        if(x == game.monkey_pr.x){
+                if(right){
+                    right=false;
+                }else{
+                    right=true;
+                }
+
+        }
+
+        i_want_to_go_back = (back_to_position != 0)
+                            and (!detect_collision(game));
+        if (detect_collision(game)) {
+            if (right) {
+                --x;
+            } else {
+                ++x;
+            }
+
+            if (up_check == false) {
+                if (!game.detect_collision(x, y - 1)) {
+                    --y;
+                    --back_to_position;
+                    return;
+                }
+                if (game.detect_collision(x, y - 1)) {
+                    face     = "\e[32mG\e[0m";
+                    up_check = true;
+                    return;
+                }
+            }
+            if (!game.detect_collision(x, y + 1) and up_check) {
+                ++y;
+                ++back_to_position;
+                return;
+            }
+
+            right = not right;
+        }
+    }
     auto frame_action(Game_state& game) -> void override
     {
         true_frame_action(game);
@@ -428,8 +496,8 @@ auto main() -> int
     clear();
     hide_cursor();
 
-    auto const MAP_WIDTH  = 25;
-    auto const MAP_HEIGHT = 15;
+    auto const MAP_WIDTH  = 35;
+    auto const MAP_HEIGHT = 20;
     set_cursor(1, 1);
     create_map(MAP_WIDTH, MAP_HEIGHT);
     /* create_map(8,8,4,6); */
@@ -437,7 +505,7 @@ auto main() -> int
     Game_state game_state{};
     game_state.map_size.x = MAP_WIDTH;
     game_state.map_size.y = MAP_HEIGHT;
-    game_state.terrain.emplace_back(8, 3, 4, 6);
+    game_state.terrain.emplace_back(8, 1, 4, 6);
     // game_state.terrain.emplace_back(20,10,2,2);
     game_state.terrain.emplace_back(2, 7, 4, 7);
 
@@ -448,6 +516,7 @@ auto main() -> int
     auto& mobs = game_state.mobs;
     mobs.push_back(std::make_unique<Mob>("@"));
     mobs.push_back(std::make_unique<Horizontal>("H", 4, 4));
+    mobs.push_back(std::make_unique<God_Mob>("G", 4, 4));
     mobs.push_back(std::make_unique<Snake>("X", 11, 11));
     mobs.push_back(std::make_unique<Vertical>("V", 7, 12));
     auto& monkey = *mobs.front();
@@ -461,7 +530,7 @@ auto main() -> int
         FD_SET(0, &readfds);
         auto const nfds = 0 + 1;
 
-        timeval timeout{0,500000};
+        timeval timeout{0,200000};
 
         if (select(nfds, &readfds, nullptr, nullptr, &timeout) == -1) {
             break;
@@ -475,7 +544,8 @@ auto main() -> int
         for (auto& mob : mobs) {
             mob->erase();
         }
-
+        game_state.monkey_pr.x =monkey.x;
+        game_state.monkey_pr.y =monkey.y;
         auto const pr_x = monkey.x;
         auto const pr_y = monkey.y;
         switch (buff) {
