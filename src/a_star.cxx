@@ -2,6 +2,10 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <cmath>
+#include <queue>
+#include <utility>
+#include <functional>
 
 enum class Field {
     PLAYER = '@',
@@ -62,29 +66,46 @@ auto main() -> int
         }
     }
 
-    struct {
-        size_t x, y;
-    } player, goal;
+    using pos_type = std::pair<size_t,size_t>;
+    pos_type player, goal;
     {
         for (size_t y = 0; y < board.size(); ++y) {
             for (size_t x = 0; x < board.front().size(); ++x) {
                 switch (board[y][x]) {
                 case Field::PLAYER:
-                    player.x = x;
-                    player.y = y;
+                    player.first = x;
+                    player.second = y;
                     break;
                 case Field::GOAL:
-                    goal.x = x;
-                    goal.y = y;
+                    goal.first = x;
+                    goal.second = y;
                     break;
                 default:
                     break;
                 }
             }
         }
-        std::cout << to_string(get_field(board, player.x, player.y)) << "\n";
-        std::cout << to_string(get_field(board, goal.x, goal.y)) << "\n";
+        std::cout << to_string(get_field(board, player.first, player.second)) << "\n";
+        std::cout << to_string(get_field(board, goal.first, goal.second)) << "\n";
     }
     print_board(board);
+
+    auto const h = [goal](size_t x, size_t y) -> double
+    {
+        auto const a = std::llabs(goal.first - x);
+        auto const b = std::llabs(goal.second - y);
+        return std::sqrt((a*a) + (b*b));
+    };
+    static_cast<void>(h);
+
+    auto q = std::priority_queue<
+        std::pair<double, pos_type>,
+        std::vector<std::pair<double, pos_type>>,
+        std::greater<std::pair<double, pos_type>>>{};
+    q.push({1.0,player});
+    q.push({0.3,player});
+
+    std::cout << q.top().first <<"\n";
+
     return 0;
 }
