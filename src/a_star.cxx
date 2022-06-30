@@ -9,6 +9,7 @@ enum class Field {
     WALL   = '#',
     EMPTY  = ' ',
     ROAD   = '*',
+    OPEN   = '?',
 };
 auto to_string(Field field) -> std::string
 {
@@ -19,6 +20,15 @@ using board_type = std::vector<std::vector<Field>>;
 auto get_field(board_type& board, size_t x, size_t y) -> Field&
 {
     return board[y][x];
+}
+auto print_board(board_type const& board) ->void
+{
+    for(auto const& row : board ){
+        for(auto const f : row){
+                std::cout << to_string(f);
+        }
+        std::cout << "|\n";
+    }
 }
 
 auto main() -> int
@@ -75,5 +85,6 @@ auto main() -> int
         std::cout << to_string(get_field(board, player.x, player.y)) << "\n";
         std::cout << to_string(get_field(board, goal.x, goal.y)) << "\n";
     }
+    print_board(board);
     return 0;
 }
