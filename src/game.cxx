@@ -385,13 +385,12 @@ struct God_Mob : Mob {
             --x;
         }
 
-        if(x == game.monkey_pr.x){
-                if(right){
-                    right=false;
-                }else{
-                    right=true;
-                }
-
+        if (x == game.monkey_pr.x) {
+            if (right) {
+                right = false;
+            } else {
+                right = true;
+            }
         }
 
         i_want_to_go_back = (back_to_position != 0)
@@ -530,7 +529,7 @@ auto main() -> int
         FD_SET(0, &readfds);
         auto const nfds = 0 + 1;
 
-        timeval timeout{0,200000};
+        timeval timeout{0, 200000};
 
         if (select(nfds, &readfds, nullptr, nullptr, &timeout) == -1) {
             break;
@@ -544,10 +543,10 @@ auto main() -> int
         for (auto& mob : mobs) {
             mob->erase();
         }
-        game_state.monkey_pr.x =monkey.x;
-        game_state.monkey_pr.y =monkey.y;
-        auto const pr_x = monkey.x;
-        auto const pr_y = monkey.y;
+        game_state.monkey_pr.x = monkey.x;
+        game_state.monkey_pr.y = monkey.y;
+        auto const pr_x        = monkey.x;
+        auto const pr_y        = monkey.y;
         switch (buff) {
         case 'w':
             monkey.y--;
