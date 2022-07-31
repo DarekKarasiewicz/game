@@ -7,6 +7,10 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <utility>
+#include <map>
+#include <cmath>
+
 
 #include <darek_game/map.h>
 
@@ -488,6 +492,21 @@ struct Snake : Mob {
         }
     }
 };
+
+using pos_type = std::pair<size_t, size_t>;
+auto set_score(std::map<pos_type, float>& gscore, pos_type pair, float value) -> void
+{
+    gscore.insert({pair, value});
+}
+
+auto get_score(std::map<pos_type, float>& gscore, pos_type pair) -> float
+{
+    if (gscore.contains(pair))
+    {
+        return gscore.at(pair);
+    }
+    return INFINITY;
+}
 
 auto main() -> int
 {
