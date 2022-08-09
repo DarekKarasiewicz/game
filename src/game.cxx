@@ -3,6 +3,7 @@
 #include <sys/select.h>
 #include <unistd.h>
 
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <string>
@@ -10,10 +11,15 @@
 #include <utility>
 #include <map>
 #include <cmath>
+#include <stack>
+#include <queue>
+#include <set>
+#include <fstream>
 
 
 #include <darek_game/map.h>
 
+using pos_type = std::pair<size_t, size_t>;
 namespace {
 auto write(int fd, std::string const s) -> ssize_t
 {
@@ -38,67 +44,120 @@ auto hide_cursor() -> void
     write(1, set.c_str(), set.size());
 }
 
+
 struct Mob;
-
-struct Terrain {
-    int x;
-    int y;
-    size_t height;
-    size_t width;
-
-    Terrain(int x_p, int y_p, size_t h, size_t w)
-            : x{x_p}, y{y_p}, height{h}, width{w}
-    {}
+enum class Field {
+    PLAYER = '@',
+    GOAL   = 'x',
+    WALL   = '#',
+    EMPTY  = ' ',
+    ROAD   = '*',
+    OPEN   = '?',
 };
+auto to_string(Field field) -> std::string
+{
+    return std::string(1, static_cast<char>(field));
+}
 
+using board_type = std::vector<std::vector<Field>>;
+auto load_board(std::string input_file) -> board_type
+{
+    auto board = board_type{};
+    {
+        auto in   = std::ifstream{input_file};
+        auto line = std::string{};
+        std::getline(in, line);
+        auto const row_size = std::stoull(line);
+        while (std::getline(in, line)) {
+            line.resize(row_size, ' ');
+            board.push_back({});
+
+            for (auto const each : line) {
+                switch (each) {
+                case '@':
+                    board.back().push_back(Field::PLAYER);
+                    break;
+                case 'x':
+                    board.back().push_back(Field::GOAL);
+                    break;
+                case '#':
+                    board.back().push_back(Field::WALL);
+                    break;
+                default:
+                    board.back().push_back(Field::EMPTY);
+                    break;
+                }
+            }
+        }
+    }
+    return board;
+}
+auto get_field(board_type& board, size_t x, size_t y) -> Field&
+{
+    return board[y][x];
+}
+auto get_field(board_type const& board, size_t x, size_t y) -> Field
+{
+    return board[y][x];
+}
+auto print_board(board_type const& board, size_t  x, size_t y) -> void
+{
+    for (auto const& row : board) {
+        set_cursor(x, y);
+        for (auto const f : row) {
+            write(1,to_string(f));
+        }
+        ++y;
+    }
+}
+auto is_valid_field(board_type const& board ,std::pair<size_t,size_t> p )->bool
+{
+    auto const [x,y] = p;
+    return (y < board.size() and x < board.front().size());
+}
+auto is_valid_move(board_type const& board ,std::pair<size_t,size_t> p )->bool
+{
+    if (!is_valid_field(board, p)){
+        return false;
+    }
+    auto const [x,y] = p;
+    auto const f = get_field(board, x, y);
+    if(f == Field::WALL){
+        return false;
+    }
+    return true;
+
+}
 struct Game_state {
-    struct {
-        int x;
-        int y;
-    } map_size;
-
+    board_type board;
     struct {
         int x;
         int y;
     } monkey_pr;
 
-    std::vector<Terrain> terrain;
-
     std::vector<std::unique_ptr<Mob>> mobs;
 
     auto detect_collision(int const x, int const y) -> bool
     {
-        if (x <= 1) {
-            return true;
-        }
-        if (x >= map_size.x) {
-            return true;
-        }
-        if (y <= 1) {
-            return true;
-        }
-        if (y >= map_size.y) {
-            return true;
-        }
-        for (auto const& terrain : terrain) {
-            if (x < terrain.x) {
-                continue;
-            }
-            if (x > terrain.x + static_cast<int>(terrain.width)) {
-                continue;
-            }
-            if (y < terrain.y) {
-                continue;
-            }
-            if (y >= terrain.y + static_cast<int>(terrain.height)) {
-                continue;
-            }
-            return true;
-        }
-        return false;
+        return is_valid_move(board, {x, y});
     }
 };
 
+auto neighbors(Game_state &game, size_t x, size_t y)
+    -> std::vector<pos_type>
+{
+    auto close_friends = std::vector<std::pair<size_t, size_t>>{};
+    auto up            = std::pair<size_t, size_t>{x, y + 1};
+    auto down          = std::pair<size_t, size_t>{x, y - 1};
+    auto left          = std::pair<size_t, size_t>{x - 1, y};
+    auto right         = std::pair<size_t, size_t>{x + 1, y};
+    for(auto each : {up, down, left, right}){
+        if(game.detect_collision(each.first, each.second)){
+            close_friends.push_back(each);
+        }
+    }
+    return close_friends;
+}
 struct Mob {
     std::string face;
     int x{2};
@@ -122,24 +181,13 @@ struct Mob {
 
     auto detect_collision(Game_state const& game_state) -> bool
     {
-        for (auto const& terrain : game_state.terrain) {
-            if (x < terrain.x) {
-                continue;
-            }
-            if (x > terrain.x + static_cast<int>(terrain.width)) {
-                continue;
-            }
-            if (y < terrain.y) {
-                continue;
-            }
-            if (y >= terrain.y + static_cast<int>(terrain.height)) {
-                continue;
-            }
-            return true;
-        }
-        return false;
+        return is_valid_move(game_state.board, {x, y});
     }
 
+    auto put(Game_state& game) -> void
+    {
+        get_field(game.board, x, y) = face;
+    }
     auto display() const -> void
     {
         set_cursor(x, y);
@@ -162,11 +210,6 @@ struct Horizontal : Mob {
 
     auto true_frame_action(Game_state& game) -> void
     {
-        if (x == game.map_size.x - 1) {
-            right = false;
-        } else if (x == 2) {
-            right = true;
-        }
         if (right) {
             ++x;
         } else {
@@ -184,90 +227,19 @@ struct Horizontal : Mob {
     auto frame_action(Game_state& game) -> void override
     {
         true_frame_action(game);
-        set_cursor(game.map_size.x + 2, 8);
-        write(1, "Hertical");
-        set_cursor(game.map_size.x + 2, 9);
-        write(1, std::to_string(x) + ":" + std::to_string(y) + "  ");
+        /* set_cursor(game.map_size.x + 2, 8); */
+        /* write(1, "Hertical"); */
+        /* set_cursor(game.map_size.x + 2, 9); */
+        /* write(1, std::to_string(x) + ":" + std::to_string(y) + "  "); */
     }
 };
 
-struct Smart_Horizontal : Mob {
-    using Mob::Mob;
-    bool right             = true;
-    int back_to_position   = 0;
-    bool i_want_to_go_back = false;
-    bool up_check          = false;
-    auto true_frame_action(Game_state& game) -> void
-    {
-        if (back_to_position != 0 and i_want_to_go_back) {
-            auto const a = -(std::abs(back_to_position) / back_to_position);
-            if (!game.detect_collision(x, y + a)) {
-                y += a;
-                back_to_position += a;
-                return;
-            }
-        }
-
-        if (x == game.map_size.x - 1) {
-            right = false;
-        } else if (x == 2) {
-            right = true;
-        }
-        if (right) {
-            ++x;
-        } else {
-            --x;
-        }
-        i_want_to_go_back = (back_to_position != 0)
-                            and (!detect_collision(game));
-        if (detect_collision(game)) {
-            if (right) {
-                --x;
-            } else {
-                ++x;
-            }
-
-            if (up_check == false) {
-                if (!game.detect_collision(x, y - 1)) {
-                    --y;
-                    --back_to_position;
-                    return;
-                }
-                if (game.detect_collision(x, y - 1)) {
-                    face     = "\e[32mX\e[0m";
-                    up_check = true;
-                    return;
-                }
-            }
-            if (!game.detect_collision(x, y + 1) and up_check) {
-                ++y;
-                ++back_to_position;
-                return;
-            }
-
-            right = not right;
-        }
-    }
-    auto frame_action(Game_state& game) -> void override
-    {
-        true_frame_action(game);
-        set_cursor(game.map_size.x + 2, 4);
-        write(1, "Smart_Horizontal");
-        set_cursor(game.map_size.x + 2, 5);
-        write(1, std::to_string(x) + ":" + std::to_string(y) + "  ");
-    }
-};
 
 struct Vertical : Mob {
     using Mob::Mob;
     bool up = true;
     auto true_frame_action(Game_state& game) -> void
     {
-        if (y == game.map_size.y - 1) {
-            up = false;
-        } else if (y == 2) {
-            up = true;
-        }
         if (up) {
             ++y;
         } else {
@@ -285,82 +257,13 @@ struct Vertical : Mob {
     auto frame_action(Game_state& game) -> void override
     {
         true_frame_action(game);
-        set_cursor(game.map_size.x + 2, 6);
-        write(1, "Vertical");
-        set_cursor(game.map_size.x + 2, 7);
-        write(1, std::to_string(x) + ":" + std::to_string(y) + "  ");
+        /* set_cursor(game.map_size.x + 2, 6); */
+        /* write(1, "Vertical"); */
+        /* set_cursor(game.map_size.x + 2, 7); */
+        /* write(1, std::to_string(x) + ":" + std::to_string(y) + "  "); */
     }
 };
 
-struct Smart_Vertical : Mob {
-    using Mob::Mob;
-    bool up                = true;
-    int back_to_position   = 0;
-    bool i_want_to_go_back = false;
-    bool left_check        = false;
-    auto true_frame_action(Game_state& game) -> void
-    {
-        if (back_to_position != 0 and i_want_to_go_back) {
-            auto const a = -(std::abs(back_to_position) / back_to_position);
-            if (!game.detect_collision(x + a, y)) {
-                x += a;
-                back_to_position += a;
-                return;
-            }
-        }
-
-        if (y == game.map_size.y - 1) {
-            up = false;
-        } else if (y == 2) {
-            up = true;
-        }
-        if (up) {
-            ++y;
-        } else {
-            --y;
-        }
-
-        i_want_to_go_back = (back_to_position != 0)
-                            and (!detect_collision(game));
-
-        if (detect_collision(game)) {
-            if (up) {
-                --y;
-            } else {
-                ++y;
-            }
-            if (left_check == false) {
-                if (!game.detect_collision(x - 1, y)) {
-                    --x;
-                    --back_to_position;
-                    return;
-                }
-                if (game.detect_collision(x - 1, y)) {
-                    face       = "\e[32mV\e[0m";
-                    left_check = true;
-                }
-            }
-            if (!game.detect_collision(x + 1, y) and left_check) {
-                ++x;
-                ++back_to_position;
-                return;
-            }
-            up = not up;
-        }
-    }
-    auto frame_action(Game_state& game) -> void override
-    {
-        true_frame_action(game);
-        set_cursor(game.map_size.x + 2, 2);
-        write(1,
-              std::string{"Smart_Vertical"}
-                  + " i_want_to_go_back=" + std::to_string(i_want_to_go_back)
-                  + " back_to_position=" + std::to_string(back_to_position)
-                  + " left_check=" + std::to_string(left_check));
-        set_cursor(game.map_size.x + 2, 3);
-        write(1, std::to_string(x) + ":" + std::to_string(y) + "  ");
-    }
-};
 struct God_Mob : Mob {
     using Mob::Mob;
     bool right             = true;
@@ -369,71 +272,102 @@ struct God_Mob : Mob {
     bool up_check          = false;
     auto true_frame_action(Game_state& game) -> void
     {
-        if (back_to_position != 0 and i_want_to_go_back) {
-            auto const a = -(std::abs(back_to_position) / back_to_position);
-            if (!game.detect_collision(x, y + a)) {
-                y += a;
-                back_to_position += a;
-                return;
-            }
-        }
-
-        if (x == game.map_size.x - 1) {
-            right = false;
-        } else if (x == 2) {
-            right = true;
-        }
-        if (right) {
-            ++x;
-        } else {
-            --x;
-        }
-
-        if (x == game.monkey_pr.x) {
-            if (right) {
-                right = false;
-            } else {
-                right = true;
-            }
-        }
-
-        i_want_to_go_back = (back_to_position != 0)
-                            and (!detect_collision(game));
-        if (detect_collision(game)) {
-            if (right) {
-                --x;
-            } else {
-                ++x;
-            }
-
-            if (up_check == false) {
-                if (!game.detect_collision(x, y - 1)) {
-                    --y;
-                    --back_to_position;
-                    return;
-                }
-                if (game.detect_collision(x, y - 1)) {
-                    face     = "\e[32mG\e[0m";
-                    up_check = true;
-                    return;
-                }
-            }
-            if (!game.detect_collision(x, y + 1) and up_check) {
-                ++y;
-                ++back_to_position;
-                return;
-            }
-
-            right = not right;
-        }
     }
     auto frame_action(Game_state& game) -> void override
     {
         true_frame_action(game);
-        set_cursor(game.map_size.x + 2, 10);
-        write(1, std::string{"God_mob"});
-        set_cursor(game.map_size.x + 2, 11);
-        write(1, std::to_string(x) + ":" + std::to_string(y) + "  ");
+        /* set_cursor(game.map_size.x + 2, 10); */
+        /* write(1, std::string{"God_mob"}); */
+        /* set_cursor(game.map_size.x + 2, 11); */
+        /* write(1, std::to_string(x) + ":" + std::to_string(y) + "  "); */
+    }
+    auto reconstruct_path(std::map<pos_type,pos_type> came_from, pos_type goal) ->std::stack<pos_type>
+    {
+        auto total_path = std::stack<pos_type>{};
+        /* goal = came_from[goal]; */
+        while (came_from.contains(goal)){
+            goal = came_from[goal];
+            total_path.push(goal);
+        }
+        total_path.pop();
+        return total_path;
+    }
+    auto set_score(std::map<pos_type, float>& gscore, pos_type pair, float value) -> void
+    {
+        gscore.insert({pair, value});
+    }
+
+    auto get_score(std::map<pos_type, float>& gscore, pos_type pair) -> float
+    {
+        if (gscore.contains(pair))
+        {
+            return gscore.at(pair);
+        }
+        return INFINITY;
+    }
+    auto a_star(Game_state& game) -> std::optional<std::stack<pos_type>>
+    {
+        auto mob = std::pair<size_t,size_t>(x, y);
+        auto goal = std::pair<size_t,size_t>(game.monkey_pr.x, game.monkey_pr.y);
+        auto path = std::optional<std::stack<pos_type>>{};
+
+        auto const h = [goal](size_t x, size_t y) -> double {
+            auto const a = std::llabs(goal.first - x);
+            auto const b = std::llabs(goal.second - y);
+            return std::sqrt((a * a) + (b * b));
+        };
+
+        auto open_queue =
+            std::priority_queue<std::pair<double, pos_type>,
+                                std::vector<std::pair<double, pos_type>>,
+                                std::greater<std::pair<double, pos_type>>>{};
+        auto open_set           = std::set<pos_type>{};
+        auto const push_to_open = [&open_queue, &open_set](
+                                      double prority, pos_type position) -> void {
+            if (open_set.contains(position)) {
+                return;
+            }
+            open_queue.push({prority, position});
+            open_set.insert(position);
+        };
+        auto const pop_from_open = [&open_queue, &open_set]() -> pos_type {
+            auto const node = open_queue.top().second;
+            open_queue.pop();
+            open_set.erase(node);
+            return node;
+        };
+
+        auto l = neighbors(game, 0, 0);
+
+        push_to_open(0, mob);
+
+        auto came_from = std::map<pos_type,pos_type>{};
+
+        std::map<pos_type, float> gscore;
+        set_score(gscore,mob , 0);
+
+        std::map<pos_type, float> fscore;
+        set_score(fscore,mob, h(mob.first, mob.second));
+
+        while (!open_set.empty()) {
+            auto const current = pop_from_open();
+            if (current == goal) {
+                path = reconstruct_path(came_from, goal);
+                break;
+            }
+
+            for(auto neighbor : neighbors(game, current.first, current.second))
+            {
+                auto tentative_gscore = get_score(gscore, current) + 1;
+                if (tentative_gscore < get_score(gscore, neighbor)){
+                    came_from[neighbor] = current;
+                    gscore[neighbor] = tentative_gscore;
+                    fscore[neighbor] = tentative_gscore + h(neighbor.first, neighbor.second);
+                    push_to_open(tentative_gscore, neighbor);
+                }
+            }
+        }
+        return path;
     }
 };
 
@@ -493,120 +427,121 @@ struct Snake : Mob {
     }
 };
 
-using pos_type = std::pair<size_t, size_t>;
-auto set_score(std::map<pos_type, float>& gscore, pos_type pair, float value) -> void
-{
-    gscore.insert({pair, value});
-}
-
-auto get_score(std::map<pos_type, float>& gscore, pos_type pair) -> float
-{
-    if (gscore.contains(pair))
-    {
-        return gscore.at(pair);
-    }
-    return INFINITY;
-}
-
 auto main() -> int
 {
     system("stty -icanon -echo");
     clear();
     hide_cursor();
 
-    auto const MAP_WIDTH  = 35;
-    auto const MAP_HEIGHT = 20;
-    set_cursor(1, 1);
-    create_map(MAP_WIDTH, MAP_HEIGHT);
-    /* create_map(8,8,4,6); */
-
     Game_state game_state{};
-    game_state.map_size.x = MAP_WIDTH;
-    game_state.map_size.y = MAP_HEIGHT;
-    game_state.terrain.emplace_back(8, 1, 4, 6);
-    // game_state.terrain.emplace_back(20,10,2,2);
-    game_state.terrain.emplace_back(2, 7, 4, 7);
-
-    for (auto& terrain : game_state.terrain) {
-        create_map(terrain.x, terrain.y, terrain.width, terrain.height);
-    }
+    game_state.board = load_board("plansza.txt");
+    set_cursor(1,1);
+    create_map(game_state.board.front().size(), game_state.board.size());
+    print_board(game_state.board,2,2);
 
     auto& mobs = game_state.mobs;
-    mobs.push_back(std::make_unique<Mob>("@"));
-    mobs.push_back(std::make_unique<Horizontal>("H", 4, 4));
-    mobs.push_back(std::make_unique<God_Mob>("G", 4, 4));
-    mobs.push_back(std::make_unique<Snake>("X", 11, 11));
-    mobs.push_back(std::make_unique<Vertical>("V", 7, 12));
+    mobs.push_back(std::make_unique<Mob>(to_string(Field::PLAYER),2, 2));
+    /* mobs.push_back(std::make_unique<Horizontal>("H", 4, 4)); */
+    /* mobs.push_back(std::make_unique<God_Mob>("G", 4, 4)); */
+    /* mobs.push_back(std::make_unique<Snake>("X", 11, 11)); */
+    /* mobs.push_back(std::make_unique<Vertical>("V", 7, 12)); */
     auto& monkey = *mobs.front();
-    monkey.display();
+    monkey.put(game);
 
-    constexpr auto EMPTY_INPUT = char{'\0'};
-    auto buff                  = EMPTY_INPUT;
-    do {
-        fd_set readfds;
-        FD_ZERO(&readfds);
-        FD_SET(0, &readfds);
-        auto const nfds = 0 + 1;
-
-        timeval timeout{0, 200000};
-
-        if (select(nfds, &readfds, nullptr, nullptr, &timeout) == -1) {
-            break;
-        }
-
-        buff = EMPTY_INPUT;
-        if (FD_ISSET(0, &readfds)) {
-            read(0, &buff, 1);
-        }
-
-        for (auto& mob : mobs) {
-            mob->erase();
-        }
-        game_state.monkey_pr.x = monkey.x;
-        game_state.monkey_pr.y = monkey.y;
-        auto const pr_x        = monkey.x;
-        auto const pr_y        = monkey.y;
-        switch (buff) {
-        case 'w':
-            monkey.y--;
-            break;
-        case 's':
-            monkey.y++;
-            break;
-        case 'd':
-            monkey.x++;
-            break;
-        case 'a':
-            monkey.x--;
-            break;
-        case 'm':
-            monkey.x = 2;
-            monkey.y = 2;
-            break;
-        default:
-            break;
-        }
-
-        if (monkey.detect_collision(game_state)) {
-            monkey.x = pr_x;
-            monkey.y = pr_y;
-        }
-
-        for (auto& mob : mobs) {
-            mob->frame_action(game_state);
-        }
-
-        for (auto& mob : mobs) {
-            mob->restrain(MAP_WIDTH, MAP_HEIGHT);
-            mob->display();
-        }
-        monkey.display();  // Monkey always on top
-
-        set_cursor(MAP_WIDTH + 2, 1);
-        write(1,
-              std::to_string(monkey.x) + ":" + std::to_string(monkey.y) + "  ");
-    } while (buff != 'q');
-
-    system("reset");
     return 0;
 }
+
+/* auto old_main() -> int */
+/* { */
+/*     system("stty -icanon -echo"); */
+/*     clear(); */
+/*     hide_cursor(); */
+
+/*     auto const MAP_WIDTH  = 35; */
+/*     auto const MAP_HEIGHT = 20; */
+/*     set_cursor(1, 1); */
+/*     create_map(MAP_WIDTH, MAP_HEIGHT); */
+/*     /1* create_map(8,8,4,6); *1/ */
+
+/*     Game_state game_state{}; */
+/*     game_state.board = load_board("plansza.txt"); */
+
+/*     auto& mobs = game_state.mobs; */
+/*     mobs.push_back(std::make_unique<Mob>("@")); */
+/*     mobs.push_back(std::make_unique<Horizontal>("H", 4, 4)); */
+/*     mobs.push_back(std::make_unique<God_Mob>("G", 4, 4)); */
+/*     mobs.push_back(std::make_unique<Snake>("X", 11, 11)); */
+/*     mobs.push_back(std::make_unique<Vertical>("V", 7, 12)); */
+/*     auto& monkey = *mobs.front(); */
+/*     monkey.display(); */
+
+/*     constexpr auto EMPTY_INPUT = char{'\0'}; */
+/*     auto buff                  = EMPTY_INPUT; */
+/*     do { */
+/*         fd_set readfds; */
+/*         FD_ZERO(&readfds); */
+/*         FD_SET(0, &readfds); */
+/*         auto const nfds = 0 + 1; */
+
+/*         timeval timeout{0, 200000}; */
+
+/*         if (select(nfds, &readfds, nullptr, nullptr, &timeout) == -1) { */
+/*             break; */
+/*         } */
+
+/*         buff = EMPTY_INPUT; */
+/*         if (FD_ISSET(0, &readfds)) { */
+/*             read(0, &buff, 1); */
+/*         } */
+
+/*         for (auto& mob : mobs) { */
+/*             mob->erase(); */
+/*         } */
+/*         game_state.monkey_pr.x = monkey.x; */
+/*         game_state.monkey_pr.y = monkey.y; */
+/*         auto const pr_x        = monkey.x; */
+/*         auto const pr_y        = monkey.y; */
+/*         switch (buff) { */
+/*         case 'w': */
+/*             monkey.y--; */
+/*             break; */
+/*         case 's': */
+/*             monkey.y++; */
+/*             break; */
+/*         case 'd': */
+/*             monkey.x++; */
+/*             break; */
+/*         case 'a': */
+/*             monkey.x--; */
+/*             break; */
+/*         case 'm': */
+/*             monkey.x = 2; */
+/*             monkey.y = 2; */
+/*             break; */
+/*         default: */
+/*             break; */
+/*         } */
+
+/*         if (monkey.detect_collision(game_state)) { */
+/*             monkey.x = pr_x; */
+/*             monkey.y = pr_y; */
+/*         } */
+
+/*         for (auto& mob : mobs) { */
+/*             mob->frame_action(game_state); */
+/*         } */
+
+/*         for (auto& mob : mobs) { */
+/*             mob->restrain(MAP_WIDTH, MAP_HEIGHT); */
+/*             mob->display(); */
+/*         } */
+/*         monkey.display();  // Monkey always on top */
+
+/*         set_cursor(MAP_WIDTH + 2, 1); */
+/*         write(1, */
+/*               std::to_string(monkey.x) + ":" + std::to_string(monkey.y) + "  "); */
+/*     } while (buff != 'q'); */
+
+/*     system("reset"); */
+/*     return 0; */
+/* } */

@@ -26,12 +26,12 @@ auto multiply_string(size_t count, std::string s) -> std::string
 
 auto create_map(size_t width, size_t height) -> void
 {
-    auto border = multiply_string(width - 2, "─");
+    auto border = multiply_string(width , "─");
     auto top    = "┌" + border + "┐" + '\n';
     auto bot    = "└" + border + "┘" + '\n';
-    auto wall   = "│" + std::string(width - 2, ' ') + "│" + '\n';
+    auto wall   = "│" + std::string(width , ' ') + "│" + '\n';
     write(1, top);
-    for (size_t i = 0; i < (height - 2); i++) {
+    for (size_t i = 0; i < height; i++) {
         write(1, wall);
     }
     write(1, bot);
