@@ -46,19 +46,51 @@ auto hide_cursor() -> void
 
 
 struct Mob;
-enum class Field {
-    PLAYER = '@',
-    GOAL   = 'x',
-    WALL   = '#',
-    EMPTY  = ' ',
-    ROAD   = '*',
-    OPEN   = '?',
-};
-auto to_string(Field field) -> std::string
-{
-    return std::string(1, static_cast<char>(field));
-}
+struct Field {
+    enum class T {
+        PLAYER = '@',
+        GOAL   = 'x',
+        WALL   = '#',
+        EMPTY  = ' ',
+        ROAD   = '*',
+        OPEN   = '?',
+        MOB    = 'M',
+    };
+    using enum T;
+    static auto to_string(T field) -> std::string
+    {
+        return std::string(1, static_cast<char>(field));
+    }
 
+    std::string face;
+    T type = T::EMPTY;
+
+    auto to_string() const -> std::string
+    {
+        if (face.empty())
+        {
+            return to_string(type);
+        }
+        return face;
+    }
+    auto operator =(T const t) -> Field&
+    {
+        face = "";
+        type = t;
+        return *this;
+    }
+    auto operator =(std::pair<std::string,T> f) -> Field&
+    {
+        face = f.first;
+        type = f.second;
+        return *this;
+    }
+    auto operator ==(T const t) const -> bool
+    {
+        return t == type;
+    }
+    /* explicit */ Field (T t): face {""}, type{t} {}
+};
 using board_type = std::vector<std::vector<Field>>;
 auto load_board(std::string input_file) -> board_type
 {
@@ -104,8 +136,8 @@ auto print_board(board_type const& board, size_t  x, size_t y) -> void
 {
     for (auto const& row : board) {
         set_cursor(x, y);
-        for (auto const f : row) {
-            write(1,to_string(f));
+        for (auto const &f : row) {
+            write(1, f.to_string());
         }
         ++y;
     }
@@ -159,13 +191,13 @@ auto neighbors(Game_state &game, size_t x, size_t y)
     return close_friends;
 }
 struct Mob {
-    Field face;
+    std::string face;
     int x{2};
     int y{2};
 
-    Mob(Field f) : face{f}
+    Mob(std::string f) : face{f}
     {}
-    Mob(Field f, int x_p, int y_p) : face{f}, x{x_p}, y{y_p}
+    Mob(std::string f, int x_p, int y_p) : face{f}, x{x_p}, y{y_p}
     {}
     virtual ~Mob()
     {}
@@ -177,7 +209,7 @@ struct Mob {
 
     auto put(Game_state& game) -> void
     {
-        get_field(game.board, x, y) = face;
+        get_field(game.board, x, y) = {face, Field::MOB};
     }
 
     auto erase(Game_state& game) const -> void
@@ -425,14 +457,13 @@ auto main() -> int
     print_board(game_state.board,2,2);
 
     auto& mobs = game_state.mobs;
-    mobs.push_back(std::make_unique<Mob>(Field::PLAYER,3, 3));
+    mobs.push_back(std::make_unique<Mob>("@",3, 3));
     /* mobs.push_back(std::make_unique<Horizontal>("H", 4, 4)); */
     /* mobs.push_back(std::make_unique<God_Mob>("G", 4, 4)); */
     /* mobs.push_back(std::make_unique<Snake>("X", 11, 11)); */
     /* mobs.push_back(std::make_unique<Vertical>("V", 7, 12)); */
     auto& monkey = *mobs.front();
-    /* monkey.put(game_state); */
-    monkey.display();
+    monkey.put(game_state);
 
     constexpr auto EMPTY_INPUT = char{'\0'};
     auto buff                  = EMPTY_INPUT;
