@@ -159,25 +159,16 @@ auto neighbors(Game_state &game, size_t x, size_t y)
     return close_friends;
 }
 struct Mob {
-    std::string face;
+    Field face;
     int x{2};
     int y{2};
 
-    Mob(std::string f) : face{f}
+    Mob(Field f) : face{f}
     {}
-    Mob(std::string f, int x_p, int y_p) : face{f}, x{x_p}, y{y_p}
+    Mob(Field f, int x_p, int y_p) : face{f}, x{x_p}, y{y_p}
     {}
     virtual ~Mob()
     {}
-
-    auto restrain(int max_x, int max_y) -> void
-    {
-        x = std::max(1 + 1, x);
-        x = std::min(max_x - 1, x);
-
-        y = std::max(1 + 1, y);
-        y = std::min(max_y - 1, y);
-    }
 
     auto detect_collision(Game_state const& game_state) -> bool
     {
@@ -188,16 +179,10 @@ struct Mob {
     {
         get_field(game.board, x, y) = face;
     }
-    auto display() const -> void
-    {
-        set_cursor(x, y);
-        write(1, face + '\n');
-    }
 
-    auto erase() const -> void
+    auto erase(Game_state& game) const -> void
     {
-        set_cursor(x, y);
-        write(1, " \n");
+        get_field(game.board, x, y) = Field::EMPTY;
     }
 
     virtual auto frame_action(Game_state&) -> void
@@ -390,19 +375,19 @@ struct Snake : Mob {
         auto const pr_y = y;
         switch (d) {
         case Direction::North:
-            face = "\e[35mX\e[0m";
+            /* face = "\e[35mX\e[0m"; */
             y--;
             break;
         case Direction::South:
-            face = "\e[32mX\e[0m";
+            /* face = "\e[32mX\e[0m"; */
             y++;
             break;
         case Direction::East:
-            face = "\e[33mX\e[0m";
+            /* face = "\e[33mX\e[0m"; */
             x++;
             break;
         case Direction::West:
-            face = "\e[36mX\e[0m";
+            /* face = "\e[36mX\e[0m"; */
             x--;
             break;
         }
@@ -440,14 +425,78 @@ auto main() -> int
     print_board(game_state.board,2,2);
 
     auto& mobs = game_state.mobs;
-    mobs.push_back(std::make_unique<Mob>(to_string(Field::PLAYER),2, 2));
+    mobs.push_back(std::make_unique<Mob>(Field::PLAYER,3, 3));
     /* mobs.push_back(std::make_unique<Horizontal>("H", 4, 4)); */
     /* mobs.push_back(std::make_unique<God_Mob>("G", 4, 4)); */
     /* mobs.push_back(std::make_unique<Snake>("X", 11, 11)); */
     /* mobs.push_back(std::make_unique<Vertical>("V", 7, 12)); */
     auto& monkey = *mobs.front();
-    monkey.put(game);
+    /* monkey.put(game_state); */
+    monkey.display();
 
+    constexpr auto EMPTY_INPUT = char{'\0'};
+    auto buff                  = EMPTY_INPUT;
+
+    do{
+        fd_set readfds;
+        FD_ZERO(&readfds);
+        FD_SET(0, &readfds);
+        auto const nfds = 0 + 1;
+
+        timeval timeout{0, 200000};
+
+        if (select(nfds, &readfds, nullptr, nullptr, &timeout) == -1) {
+            break;
+        }
+
+        buff = EMPTY_INPUT;
+        if (FD_ISSET(0, &readfds)) {
+            read(0, &buff, 1);
+        }
+        for (auto& mob: mobs){
+            mob -> erase(game_state); //Propably it should be put in futhure
+        }
+        game_state.monkey_pr.x = monkey.x;
+        game_state.monkey_pr.y = monkey.y;
+        auto const pr_x        = monkey.x;
+        auto const pr_y        = monkey.y;
+        switch (buff) {
+        case 'w':
+            monkey.y--;
+            break;
+        case 's':
+            monkey.y++;
+            break;
+        case 'd':
+            monkey.x++;
+            break;
+        case 'a':
+            monkey.x--;
+            break;
+        case 'm':
+            monkey.x = 2;
+            monkey.y = 2;
+            break;
+        default:
+            break;
+        }
+
+        if (monkey.detect_collision(game_state)){
+            monkey.x = pr_x;
+            monkey.y = pr_y;
+        }
+
+        for (auto& mob : mobs) {
+            mob->frame_action(game_state);
+        }
+
+        /* for (auto& mob : mobs) { */
+        /*     /1* mob->restrain(MAP_WIDTH, MAP_HEIGHT); *1/ */
+        /*     /1* mob->display(); *1/ */
+        /* } */
+        monkey.put(game_state);
+    } while (buff != 'q');
+    system("reset");
     return 0;
 }
 
