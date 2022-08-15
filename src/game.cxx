@@ -154,7 +154,7 @@ auto is_valid_move(board_type const& board ,std::pair<size_t,size_t> p )->bool
     }
     auto const [x,y] = p;
     auto const f = get_field(board, x, y);
-    if(f == Field::WALL){
+    if(f == Field::WALL or f == Field::MOB or f == Field::PLAYER){
         return false;
     }
     return true;
