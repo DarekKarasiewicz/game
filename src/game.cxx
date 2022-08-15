@@ -212,6 +212,14 @@ struct Mob {
         get_field(game.board, x, y) = {face, Field::MOB};
     }
 
+    auto move(Game_state& game,size_t f_x, size_t f_y) -> void
+    {
+        get_field(game.board, x, y) = Field::EMPTY;
+        x= f_x;
+        y= f_y;
+        get_field(game.board, x, y) = {face, Field::MOB};
+    }
+
     auto erase(Game_state& game) const -> void
     {
         get_field(game.board, x, y) = Field::EMPTY;
@@ -227,19 +235,21 @@ struct Horizontal : Mob {
 
     auto true_frame_action(Game_state& game) -> void
     {
+        auto f_x               = x;
         if (right) {
-            ++x;
+            ++f_x;
         } else {
-            --x;
+            --f_x;
         }
-        if (detect_collision(game)) {
+        if (!is_valid_move(game.board, {f_x,y})) {
             if (right) {
-                --x;
+                --f_x;
             } else {
-                ++x;
+                ++f_x;
             }
             right = not right;
         }
+        move(game,f_x, y);
     }
     auto frame_action(Game_state& game) -> void override
     {
@@ -458,12 +468,13 @@ auto main() -> int
 
     auto& mobs = game_state.mobs;
     mobs.push_back(std::make_unique<Mob>("@",3, 3));
-    /* mobs.push_back(std::make_unique<Horizontal>("H", 4, 4)); */
+    mobs.push_back(std::make_unique<Horizontal>("H", 4, 4));
     /* mobs.push_back(std::make_unique<God_Mob>("G", 4, 4)); */
     /* mobs.push_back(std::make_unique<Snake>("X", 11, 11)); */
     /* mobs.push_back(std::make_unique<Vertical>("V", 7, 12)); */
     auto& monkey = *mobs.front();
-    monkey.put(game_state);
+    /* monkey.put(game_state); */
+    /* print_board(game_state.board,2,2); */
 
     constexpr auto EMPTY_INPUT = char{'\0'};
     auto buff                  = EMPTY_INPUT;
@@ -472,60 +483,46 @@ auto main() -> int
         fd_set readfds;
         FD_ZERO(&readfds);
         FD_SET(0, &readfds);
-        auto const nfds = 0 + 1;
-
-        timeval timeout{0, 200000};
-
-        if (select(nfds, &readfds, nullptr, nullptr, &timeout) == -1) {
-            break;
-        }
+        /* auto const nfds = 0 + 1; */
 
         buff = EMPTY_INPUT;
         if (FD_ISSET(0, &readfds)) {
             read(0, &buff, 1);
         }
-        for (auto& mob: mobs){
-            mob -> erase(game_state); //Propably it should be put in futhure
-        }
-        game_state.monkey_pr.x = monkey.x;
-        game_state.monkey_pr.y = monkey.y;
-        auto const pr_x        = monkey.x;
-        auto const pr_y        = monkey.y;
+        auto f_x               = monkey.x;
+        auto f_y               = monkey.y;
         switch (buff) {
         case 'w':
-            monkey.y--;
+            f_y--;
             break;
         case 's':
-            monkey.y++;
+            f_y++;
             break;
         case 'd':
-            monkey.x++;
+            f_x++;
             break;
         case 'a':
-            monkey.x--;
+            f_x--;
             break;
         case 'm':
-            monkey.x = 2;
-            monkey.y = 2;
+            f_x = 2;
+            f_y = 2;
             break;
         default:
             break;
         }
-
-        if (monkey.detect_collision(game_state)){
-            monkey.x = pr_x;
-            monkey.y = pr_y;
+        if (!is_valid_move(game_state.board, {f_x, f_y})) {
+            f_x = monkey.x;
+            f_y = monkey.y;
         }
 
         for (auto& mob : mobs) {
             mob->frame_action(game_state);
         }
 
-        /* for (auto& mob : mobs) { */
-        /*     /1* mob->restrain(MAP_WIDTH, MAP_HEIGHT); *1/ */
-        /*     /1* mob->display(); *1/ */
-        /* } */
-        monkey.put(game_state);
+        monkey.move(game_state, f_x, f_y);
+
+        print_board(game_state.board,2,2);
     } while (buff != 'q');
     system("reset");
     return 0;
@@ -579,8 +576,8 @@ auto main() -> int
 /*         } */
 /*         game_state.monkey_pr.x = monkey.x; */
 /*         game_state.monkey_pr.y = monkey.y; */
-/*         auto const pr_x        = monkey.x; */
-/*         auto const pr_y        = monkey.y; */
+        /* auto const pr_x        = monkey.x; */
+        /* auto const pr_y        = monkey.y; */
 /*         switch (buff) { */
 /*         case 'w': */
 /*             monkey.y--; */
@@ -607,9 +604,9 @@ auto main() -> int
 /*             monkey.y = pr_y; */
 /*         } */
 
-/*         for (auto& mob : mobs) { */
-/*             mob->frame_action(game_state); */
-/*         } */
+        /* for (auto& mob : mobs) { */
+        /*     mob->frame_action(game_state); */
+        /* } */
 
 /*         for (auto& mob : mobs) { */
 /*             mob->restrain(MAP_WIDTH, MAP_HEIGHT); */
