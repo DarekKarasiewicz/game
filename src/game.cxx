@@ -3,19 +3,18 @@
 #include <sys/select.h>
 #include <unistd.h>
 
+#include <cmath>
+#include <fstream>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <optional>
-#include <string>
-#include <vector>
-#include <utility>
-#include <map>
-#include <cmath>
-#include <stack>
 #include <queue>
 #include <set>
-#include <fstream>
-
+#include <stack>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <darek_game/map.h>
 
@@ -67,29 +66,29 @@ struct Field {
 
     auto to_string() const -> std::string
     {
-        if (face.empty())
-        {
+        if (face.empty()) {
             return to_string(type);
         }
         return face;
     }
-    auto operator =(T const t) -> Field&
+    auto operator=(T const t) -> Field&
     {
         face = "";
         type = t;
         return *this;
     }
-    auto operator =(std::pair<std::string,T> f) -> Field&
+    auto operator=(std::pair<std::string, T> f) -> Field&
     {
         face = f.first;
         type = f.second;
         return *this;
     }
-    auto operator ==(T const t) const -> bool
+    auto operator==(T const t) const -> bool
     {
         return t == type;
     }
-    /* explicit */ Field (T t): face {""}, type{t} {}
+    /* explicit */ Field(T t) : face{""}, type{t}
+    {}
 };
 using board_type = std::vector<std::vector<Field>>;
 auto load_board(std::string input_file) -> board_type
@@ -132,33 +131,33 @@ auto get_field(board_type const& board, size_t x, size_t y) -> Field
 {
     return board[y][x];
 }
-auto print_board(board_type const& board, size_t  x, size_t y) -> void
+auto print_board(board_type const& board, size_t x, size_t y) -> void
 {
     for (auto const& row : board) {
         set_cursor(x, y);
-        for (auto const &f : row) {
+        for (auto const& f : row) {
             write(1, f.to_string());
         }
         ++y;
     }
 }
-auto is_valid_field(board_type const& board ,std::pair<size_t,size_t> p )->bool
+auto is_valid_field(board_type const& board, std::pair<size_t, size_t> p)
+    -> bool
 {
-    auto const [x,y] = p;
+    auto const [x, y] = p;
     return (y < board.size() and x < board.front().size());
 }
-auto is_valid_move(board_type const& board ,std::pair<size_t,size_t> p )->bool
+auto is_valid_move(board_type const& board, std::pair<size_t, size_t> p) -> bool
 {
-    if (!is_valid_field(board, p)){
+    if (!is_valid_field(board, p)) {
         return false;
     }
-    auto const [x,y] = p;
-    auto const f = get_field(board, x, y);
-    if(f == Field::WALL or f == Field::MOB or f == Field::PLAYER){
+    auto const [x, y] = p;
+    auto const f      = get_field(board, x, y);
+    if (f == Field::WALL or f == Field::MOB or f == Field::PLAYER) {
         return false;
     }
     return true;
-
 }
 struct Game_state {
     board_type board;
@@ -175,16 +174,15 @@ struct Game_state {
     }
 };
 
-auto neighbors(Game_state &game, size_t x, size_t y)
-    -> std::vector<pos_type>
+auto neighbors(Game_state& game, size_t x, size_t y) -> std::vector<pos_type>
 {
     auto close_friends = std::vector<std::pair<size_t, size_t>>{};
     auto up            = std::pair<size_t, size_t>{x, y + 1};
     auto down          = std::pair<size_t, size_t>{x, y - 1};
     auto left          = std::pair<size_t, size_t>{x - 1, y};
     auto right         = std::pair<size_t, size_t>{x + 1, y};
-    for(auto each : {up, down, left, right}){
-        if(game.detect_collision(each.first, each.second)){
+    for (auto each : {up, down, left, right}) {
+        if (game.detect_collision(each.first, each.second)) {
             close_friends.push_back(each);
         }
     }
@@ -212,11 +210,11 @@ struct Mob {
         get_field(game.board, x, y) = {face, Field::MOB};
     }
 
-    auto move(Game_state& game,size_t f_x, size_t f_y) -> void
+    auto move(Game_state& game, size_t f_x, size_t f_y) -> void
     {
         get_field(game.board, x, y) = Field::EMPTY;
-        x= f_x;
-        y= f_y;
+        x                           = f_x;
+        y                           = f_y;
         get_field(game.board, x, y) = {face, Field::MOB};
     }
 
@@ -235,13 +233,13 @@ struct Horizontal : Mob {
 
     auto true_frame_action(Game_state& game) -> void
     {
-        auto f_x               = x;
+        auto f_x = x;
         if (right) {
             ++f_x;
         } else {
             --f_x;
         }
-        if (!is_valid_move(game.board, {f_x,y})) {
+        if (!is_valid_move(game.board, {f_x, y})) {
             if (right) {
                 --f_x;
             } else {
@@ -249,7 +247,7 @@ struct Horizontal : Mob {
             }
             right = not right;
         }
-        move(game,f_x, y);
+        move(game, f_x, y);
     }
     auto frame_action(Game_state& game) -> void override
     {
@@ -260,7 +258,6 @@ struct Horizontal : Mob {
         /* write(1, std::to_string(x) + ":" + std::to_string(y) + "  "); */
     }
 };
-
 
 struct Vertical : Mob {
     using Mob::Mob;
@@ -297,45 +294,37 @@ struct God_Mob : Mob {
     int back_to_position   = 0;
     bool i_want_to_go_back = false;
     bool up_check          = false;
-    auto true_frame_action(Game_state& game) -> void
-    {
-    }
-    auto frame_action(Game_state& game) -> void override
-    {
-        true_frame_action(game);
-        /* set_cursor(game.map_size.x + 2, 10); */
-        /* write(1, std::string{"God_mob"}); */
-        /* set_cursor(game.map_size.x + 2, 11); */
-        /* write(1, std::to_string(x) + ":" + std::to_string(y) + "  "); */
-    }
-    auto reconstruct_path(std::map<pos_type,pos_type> came_from, pos_type goal) ->std::stack<pos_type>
+    auto reconstruct_path(std::map<pos_type, pos_type> came_from, pos_type goal)
+        -> std::stack<pos_type>
     {
         auto total_path = std::stack<pos_type>{};
         /* goal = came_from[goal]; */
-        while (came_from.contains(goal)){
+        while (came_from.contains(goal)) {
             goal = came_from[goal];
             total_path.push(goal);
         }
         total_path.pop();
         return total_path;
     }
-    auto set_score(std::map<pos_type, float>& gscore, pos_type pair, float value) -> void
+    auto set_score(std::map<pos_type, float>& gscore,
+                   pos_type pair,
+                   float value) -> void
     {
         gscore.insert({pair, value});
     }
 
     auto get_score(std::map<pos_type, float>& gscore, pos_type pair) -> float
     {
-        if (gscore.contains(pair))
-        {
+        if (gscore.contains(pair)) {
             return gscore.at(pair);
         }
         return INFINITY;
     }
     auto a_star(Game_state& game) -> std::optional<std::stack<pos_type>>
     {
-        auto mob = std::pair<size_t,size_t>(x, y);
-        auto goal = std::pair<size_t,size_t>(game.monkey_pr.x, game.monkey_pr.y);
+        auto mob = std::pair<size_t, size_t>(x, y);
+        auto goal =
+            std::pair<size_t, size_t>(game.monkey_pr.x, game.monkey_pr.y);
         auto path = std::optional<std::stack<pos_type>>{};
 
         auto const h = [goal](size_t x, size_t y) -> double {
@@ -350,7 +339,8 @@ struct God_Mob : Mob {
                                 std::greater<std::pair<double, pos_type>>>{};
         auto open_set           = std::set<pos_type>{};
         auto const push_to_open = [&open_queue, &open_set](
-                                      double prority, pos_type position) -> void {
+                                      double prority,
+                                      pos_type position) -> void {
             if (open_set.contains(position)) {
                 return;
             }
@@ -368,13 +358,13 @@ struct God_Mob : Mob {
 
         push_to_open(0, mob);
 
-        auto came_from = std::map<pos_type,pos_type>{};
+        auto came_from = std::map<pos_type, pos_type>{};
 
         std::map<pos_type, float> gscore;
-        set_score(gscore,mob , 0);
+        set_score(gscore, mob, 0);
 
         std::map<pos_type, float> fscore;
-        set_score(fscore,mob, h(mob.first, mob.second));
+        set_score(fscore, mob, h(mob.first, mob.second));
 
         while (!open_set.empty()) {
             auto const current = pop_from_open();
@@ -383,18 +373,33 @@ struct God_Mob : Mob {
                 break;
             }
 
-            for(auto neighbor : neighbors(game, current.first, current.second))
-            {
+            for (auto neighbor :
+                 neighbors(game, current.first, current.second)) {
                 auto tentative_gscore = get_score(gscore, current) + 1;
-                if (tentative_gscore < get_score(gscore, neighbor)){
+                if (tentative_gscore < get_score(gscore, neighbor)) {
                     came_from[neighbor] = current;
-                    gscore[neighbor] = tentative_gscore;
-                    fscore[neighbor] = tentative_gscore + h(neighbor.first, neighbor.second);
+                    gscore[neighbor]    = tentative_gscore;
+                    fscore[neighbor] =
+                        tentative_gscore + h(neighbor.first, neighbor.second);
                     push_to_open(tentative_gscore, neighbor);
                 }
             }
         }
         return path;
+    }
+    auto true_frame_action(Game_state& game) -> void
+    {
+        auto path = a_star(game);
+        auto step = path->top();
+        move(game, step.first, step.second);
+    }
+    auto frame_action(Game_state& game) -> void override
+    {
+        true_frame_action(game);
+        /* set_cursor(game.map_size.x + 2, 10); */
+        /* write(1, std::string{"God_mob"}); */
+        /* set_cursor(game.map_size.x + 2, 11); */
+        /* write(1, std::to_string(x) + ":" + std::to_string(y) + "  "); */
     }
 };
 
@@ -462,12 +467,12 @@ auto main() -> int
 
     Game_state game_state{};
     game_state.board = load_board("plansza.txt");
-    set_cursor(1,1);
+    set_cursor(1, 1);
     create_map(game_state.board.front().size(), game_state.board.size());
-    print_board(game_state.board,2,2);
+    print_board(game_state.board, 2, 2);
 
     auto& mobs = game_state.mobs;
-    mobs.push_back(std::make_unique<Mob>("@",3, 3));
+    mobs.push_back(std::make_unique<Mob>("@", 3, 3));
     mobs.push_back(std::make_unique<Horizontal>("H", 4, 4));
     /* mobs.push_back(std::make_unique<God_Mob>("G", 4, 4)); */
     /* mobs.push_back(std::make_unique<Snake>("X", 11, 11)); */
@@ -479,18 +484,24 @@ auto main() -> int
     constexpr auto EMPTY_INPUT = char{'\0'};
     auto buff                  = EMPTY_INPUT;
 
-    do{
+    do {
         fd_set readfds;
         FD_ZERO(&readfds);
         FD_SET(0, &readfds);
-        /* auto const nfds = 0 + 1; */
+        auto const nfds = 0 + 1;
+
+        timeval timeout{0, 200000};
+
+        if (select(nfds, &readfds, nullptr, nullptr, &timeout) == -1) {
+            break;
+        }
 
         buff = EMPTY_INPUT;
         if (FD_ISSET(0, &readfds)) {
             read(0, &buff, 1);
         }
-        auto f_x               = monkey.x;
-        auto f_y               = monkey.y;
+        auto f_x = monkey.x;
+        auto f_y = monkey.y;
         switch (buff) {
         case 'w':
             f_y--;
@@ -511,18 +522,18 @@ auto main() -> int
         default:
             break;
         }
+        for (auto& mob : mobs) {
+            mob->frame_action(game_state);
+        }
+
         if (!is_valid_move(game_state.board, {f_x, f_y})) {
             f_x = monkey.x;
             f_y = monkey.y;
         }
 
-        for (auto& mob : mobs) {
-            mob->frame_action(game_state);
-        }
-
         monkey.move(game_state, f_x, f_y);
 
-        print_board(game_state.board,2,2);
+        print_board(game_state.board, 2, 2);
     } while (buff != 'q');
     system("reset");
     return 0;
@@ -576,8 +587,8 @@ auto main() -> int
 /*         } */
 /*         game_state.monkey_pr.x = monkey.x; */
 /*         game_state.monkey_pr.y = monkey.y; */
-        /* auto const pr_x        = monkey.x; */
-        /* auto const pr_y        = monkey.y; */
+/* auto const pr_x        = monkey.x; */
+/* auto const pr_y        = monkey.y; */
 /*         switch (buff) { */
 /*         case 'w': */
 /*             monkey.y--; */
@@ -604,9 +615,9 @@ auto main() -> int
 /*             monkey.y = pr_y; */
 /*         } */
 
-        /* for (auto& mob : mobs) { */
-        /*     mob->frame_action(game_state); */
-        /* } */
+/* for (auto& mob : mobs) { */
+/*     mob->frame_action(game_state); */
+/* } */
 
 /*         for (auto& mob : mobs) { */
 /*             mob->restrain(MAP_WIDTH, MAP_HEIGHT); */
@@ -616,7 +627,8 @@ auto main() -> int
 
 /*         set_cursor(MAP_WIDTH + 2, 1); */
 /*         write(1, */
-/*               std::to_string(monkey.x) + ":" + std::to_string(monkey.y) + "  "); */
+/*               std::to_string(monkey.x) + ":" + std::to_string(monkey.y) + "
+ * "); */
 /*     } while (buff != 'q'); */
 
 /*     system("reset"); */
