@@ -15,6 +15,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <thread>
 
 #include <darek_game/map.h>
 
@@ -125,7 +126,7 @@ auto load_board(std::string input_file) -> board_type
 }
 auto get_field(board_type& board, size_t x, size_t y) -> Field&
 {
-    return board[y][x];
+    return board.at(y).at(x);
 }
 auto get_field(board_type const& board, size_t x, size_t y) -> Field
 {
@@ -390,6 +391,13 @@ struct God_Mob : Mob {
     auto true_frame_action(Game_state& game) -> void
     {
         auto path = a_star(game);
+        if (!path){
+            //FIXME Why in first turn it crashed
+            return;
+        }
+        if (path->empty()){
+            return;
+        }
         auto step = path->top();
         move(game, step.first, step.second);
     }
@@ -469,17 +477,26 @@ auto main() -> int
     game_state.board = load_board("plansza.txt");
     set_cursor(1, 1);
     create_map(game_state.board.front().size(), game_state.board.size());
-    print_board(game_state.board, 2, 2);
+
+    set_cursor(20,20);
+    std::cout << game_state.board.front().size() << "x" << game_state.board.size()<<std::endl;
 
     auto& mobs = game_state.mobs;
     mobs.push_back(std::make_unique<Mob>("@", 3, 3));
-    mobs.push_back(std::make_unique<Horizontal>("H", 4, 4));
-    /* mobs.push_back(std::make_unique<God_Mob>("G", 4, 4)); */
+    /* mobs.push_back(std::make_unique<Horizontal>("H", 4, 4)); */
+    mobs.push_back(std::make_unique<God_Mob>("G", 10, 5));
     /* mobs.push_back(std::make_unique<Snake>("X", 11, 11)); */
     /* mobs.push_back(std::make_unique<Vertical>("V", 7, 12)); */
     auto& monkey = *mobs.front();
+    game_state.monkey_pr.x = monkey.x;
+    game_state.monkey_pr.y = monkey.y;
     /* monkey.put(game_state); */
     /* print_board(game_state.board,2,2); */
+
+    for (auto &each : mobs){
+        each->put(game_state);
+    }
+    print_board(game_state.board, 2, 2);
 
     constexpr auto EMPTY_INPUT = char{'\0'};
     auto buff                  = EMPTY_INPUT;
@@ -490,7 +507,7 @@ auto main() -> int
         FD_SET(0, &readfds);
         auto const nfds = 0 + 1;
 
-        timeval timeout{0, 200000};
+        timeval timeout{2, 200000};
 
         if (select(nfds, &readfds, nullptr, nullptr, &timeout) == -1) {
             break;
@@ -530,10 +547,12 @@ auto main() -> int
             f_x = monkey.x;
             f_y = monkey.y;
         }
+        game_state.monkey_pr.x = monkey.x;
+        game_state.monkey_pr.y = monkey.y;
 
         monkey.move(game_state, f_x, f_y);
-
         print_board(game_state.board, 2, 2);
+        /* std::this_thread::sleep_for(std::chrono::microseconds{timeout.tv_usec}); */
     } while (buff != 'q');
     system("reset");
     return 0;
