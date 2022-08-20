@@ -485,6 +485,7 @@ auto main() -> int
     mobs.push_back(std::make_unique<Mob>("@", 3, 3));
     /* mobs.push_back(std::make_unique<Horizontal>("H", 4, 4)); */
     mobs.push_back(std::make_unique<God_Mob>("G", 10, 5));
+    mobs.push_back(std::make_unique<God_Mob>("Y", 4, 8));
     /* mobs.push_back(std::make_unique<Snake>("X", 11, 11)); */
     /* mobs.push_back(std::make_unique<Vertical>("V", 7, 12)); */
     auto& monkey = *mobs.front();

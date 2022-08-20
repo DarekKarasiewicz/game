@@ -1,17 +1,17 @@
+#include <chrono>
 #include <cmath>
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <map>
+#include <optional>
 #include <queue>
 #include <set>
+#include <stack>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
-#include <stack>
-#include <optional>
-#include <thread>
-#include <chrono>
 
 enum class Field {
     PLAYER = '@',
@@ -44,23 +44,23 @@ auto print_board(board_type const& board) -> void
         std::cout << "|\n";
     }
 }
-auto is_valid_field(board_type const& board ,std::pair<size_t,size_t> p )->bool
+auto is_valid_field(board_type const& board, std::pair<size_t, size_t> p)
+    -> bool
 {
-    auto const [x,y] = p;
+    auto const [x, y] = p;
     return (y < board.size() and x < board.front().size());
 }
-auto is_valid_move(board_type const& board ,std::pair<size_t,size_t> p )->bool
+auto is_valid_move(board_type const& board, std::pair<size_t, size_t> p) -> bool
 {
-    if (!is_valid_field(board, p)){
+    if (!is_valid_field(board, p)) {
         return false;
     }
-    auto const [x,y] = p;
-    auto const f = get_field(board, x, y);
-    if(f == Field::WALL){
+    auto const [x, y] = p;
+    auto const f      = get_field(board, x, y);
+    if (f == Field::WALL) {
         return false;
     }
     return true;
-
 }
 auto neighbors(board_type const& board, size_t x, size_t y)
     -> std::vector<std::pair<size_t, size_t>>
@@ -70,33 +70,36 @@ auto neighbors(board_type const& board, size_t x, size_t y)
     auto down          = std::pair<size_t, size_t>{x, y - 1};
     auto left          = std::pair<size_t, size_t>{x - 1, y};
     auto right         = std::pair<size_t, size_t>{x + 1, y};
-    for(auto each : {up, down, left, right}){
-        if(is_valid_move(board, each)){
+    for (auto each : {up, down, left, right}) {
+        if (is_valid_move(board, each)) {
             close_friends.push_back(each);
         }
     }
     return close_friends;
 }
 
-auto set_score(std::map<std::pair<size_t, size_t>, float>& gscore, std::pair<size_t, size_t> pair, float value) ->void
+auto set_score(std::map<std::pair<size_t, size_t>, float>& gscore,
+               std::pair<size_t, size_t> pair,
+               float value) -> void
 {
-        gscore.insert({pair,value});
+    gscore.insert({pair, value});
 }
 
-auto get_score(std::map<std::pair<size_t, size_t>, float>& gscore, std::pair<size_t, size_t> pair) -> float
+auto get_score(std::map<std::pair<size_t, size_t>, float>& gscore,
+               std::pair<size_t, size_t> pair) -> float
 {
-        if(gscore.contains(pair))
-        {
-            return gscore.at(pair);
-        }
-        return INFINITY;
+    if (gscore.contains(pair)) {
+        return gscore.at(pair);
+    }
+    return INFINITY;
 }
 using pos_type = std::pair<size_t, size_t>;
-auto reconstruct_path(std::map<pos_type,pos_type> came_from, pos_type goal) ->std::stack<pos_type>
+auto reconstruct_path(std::map<pos_type, pos_type> came_from, pos_type goal)
+    -> std::stack<pos_type>
 {
     auto total_path = std::stack<pos_type>{};
     /* goal = came_from[goal]; */
-    while (came_from.contains(goal)){
+    while (came_from.contains(goal)) {
         goal = came_from[goal];
         total_path.push(goal);
     }
@@ -190,7 +193,7 @@ auto main() -> int
 
     push_to_open(0, player);
 
-    auto came_from = std::map<pos_type,pos_type>{};
+    auto came_from = std::map<pos_type, pos_type>{};
 
     std::map<pos_type, float> gscore;
     set_score(gscore, player, 0);
@@ -201,8 +204,8 @@ auto main() -> int
     auto path = std::optional<std::stack<pos_type>>{};
     while (!open_set.empty()) {
         auto const current = pop_from_open();
-        auto &f = get_field(board, current.first, current.second);
-        if(f != Field::PLAYER and f != Field::GOAL){
+        auto& f            = get_field(board, current.first, current.second);
+        if (f != Field::PLAYER and f != Field::GOAL) {
             f = Field::EMPTY;
         }
         if (current == goal) {
@@ -210,36 +213,34 @@ auto main() -> int
             break;
         }
 
-        for(auto neighbor : neighbors(board, current.first, current.second))
-        {
+        for (auto neighbor : neighbors(board, current.first, current.second)) {
             auto tentative_gscore = get_score(gscore, current) + 1;
-            if (tentative_gscore < get_score(gscore, neighbor)){
+            if (tentative_gscore < get_score(gscore, neighbor)) {
                 came_from[neighbor] = current;
-                gscore[neighbor] = tentative_gscore;
-                fscore[neighbor] = tentative_gscore + h(neighbor.first, neighbor.second);
+                gscore[neighbor]    = tentative_gscore;
+                fscore[neighbor] =
+                    tentative_gscore + h(neighbor.first, neighbor.second);
                 push_to_open(tentative_gscore, neighbor);
-                auto &f = get_field(board, neighbor.first, neighbor.second);
-                if (f != Field::GOAL){
-                    f= Field::OPEN;
+                auto& f = get_field(board, neighbor.first, neighbor.second);
+                if (f != Field::GOAL) {
+                    f = Field::OPEN;
                 }
             }
         }
 
         print_board(board);
-        std::cout <<"\n";
+        std::cout << "\n";
         std::this_thread::sleep_for(std::chrono::milliseconds{167});
     }
 
-    if (!path.has_value()){
+    if (!path.has_value()) {
         return 1;
     }
-    while (!path->empty())
-    {
+    while (!path->empty()) {
         auto step = path->top();
         path->pop();
 
-       get_field(board, step.first, step.second) = Field::ROAD;
-
+        get_field(board, step.first, step.second) = Field::ROAD;
     }
     print_board(board);
 
